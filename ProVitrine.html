@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SitePrompt Generator — Créez votre site vitrine pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+:root {
+  --po: #f97316;
+  --poh: #ea580c;
+  --pd: #1a1a2e;
+  --g50: #f8fafc;
+  --g100: #f1f5f9;
+  --g200: #e2e8f0;
+  --g300: #cbd5e1;
+  --g400: #94a3b8;
+  --g500: #64748b;
+  --g600: #475569;
+  --g700: #1e293b;
+  --grn: #22c55e;
+  --red: #ef4444;
+  --rad: 10px;
+  --sh: 0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--g50);color:var(--g700);line-height:1.6}
+.app{max-width:1100px;margin:0 auto;padding:30px 20px 60px}
+h1{font-size:1.8rem;font-weight:800;margin-bottom:4px;color:var(--pd)}
+h1 span{color:var(--po)}
+.sub{color:var(--g500);font-size:.95rem;margin-bottom:30px}
+.steps{display:flex;gap:8px;margin-bottom:30px;flex-wrap:wrap}
+.step-ind{flex:1;min-width:120px;padding:10px 14px;border-radius:8px;background:var(--g100);font-size:.8rem;font-weight:600;color:var(--g400);text-align:center;border:1.5px solid transparent;transition:.2s}
+.step-ind.active{background:#fff;color:var(--po);border-color:var(--po);box-shadow:0 0 0 3px rgba(249,115,22,.12)}
+.step-ind.done{background:#e8f5e9;color:var(--grn);border-color:var(--grn)}
+.card{background:#fff;border-radius:var(--rad);padding:28px 30px;margin-bottom:24px;box-shadow:var(--sh);border:1.5px solid var(--g200)}
+.card.hidden{display:none}
+.card h2{font-size:1.15rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card h2 .num{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--po);color:#fff;align-items:center;justify-content:center;font-size:.8rem;font-weight:700}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+label{display:block;font-size:.85rem;font-weight:600;margin-bottom:4px;color:var(--g600)}
+input,select,textarea{width:100%;padding:10px 14px;border:1.5px solid var(--g200);border-radius:8px;font-size:.9rem;font-family:inherit;transition:.15s;background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--po);box-shadow:0 0 0 3px rgba(249,115,22,.12)}
+textarea{resize:vertical;min-height:80px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 24px;border:none;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;transition:.2s;text-decoration:none}
+.btn-p{background:var(--po);color:#fff}
+.btn-p:hover{background:var(--poh)}
+.btn-o{background:transparent;color:var(--po);border:2px solid var(--po)}
+.btn-o:hover{background:var(--po);color:#fff}
+.btn-sm{padding:6px 14px;font-size:.8rem}
+.btn-g{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.bg{display:flex;gap:10px}
+.bg .btn{flex:1;justify-content:center}
+.btn-c{position:absolute;top:12px;right:12px;padding:6px 14px;font-size:.78rem;background:var(--g100);color:var(--g600);border:1px solid var(--g200);border-radius:6px;cursor:pointer;transition:.15s}
+.btn-c:hover{background:var(--po);color:#fff;border-color:var(--po)}
+.chg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.chg-card{border:2px solid var(--g200);border-radius:8px;padding:14px;cursor:pointer;transition:.15s;text-align:center}
+.chg-card:hover{border-color:var(--g300)}
+.chg-card.sel{border-color:var(--po);box-shadow:0 0 0 3px rgba(249,115,22,.15)}
+.chg-pv{height:50px;border-radius:6px;margin-bottom:8px;display:flex;gap:4px;padding:6px;align-items:center;justify-content:center}
+.chg-pv span{display:block;width:22px;height:22px;border-radius:50%}
+.chg-n{font-size:.8rem;font-weight:600;color:var(--g600)}
+.ccol{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.ccol label{font-size:.8rem;margin-bottom:0}
+.csw{width:36px;height:36px;border-radius:50%;border:2px solid var(--g200);cursor:pointer;flex-shrink:0;position:relative}
+.csw input{position:absolute;opacity:0;width:0;height:0}
+.oa{position:relative;margin-top:16px}
+.oa textarea{font-family:'Cascadia Code','Fira Code',monospace;font-size:.82rem;min-height:240px;background:var(--pd);color:#e2e8f0;border-color:var(--pd);padding:16px;line-height:1.5}
+.oa textarea:focus{border-color:var(--po)}
+.tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:2px solid var(--g200)}
+.tab{padding:8px 18px;border:none;background:none;font-size:.85rem;font-weight:600;color:var(--g400);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s}
+.tab.active{color:var(--po);border-color:var(--po)}
+.tag{display:inline-block;padding:3px 12px;border-radius:20px;font-size:.78rem;font-weight:500;background:var(--g100);color:var(--g500);margin:3px;cursor:pointer;border:1.5px solid var(--g200);transition:.12s;user-select:none}
+.tag.sel{background:#fff7ed;color:var(--po);border-color:#fed7aa}
+.tl{display:flex;flex-wrap:wrap;gap:2px;margin-top:10px;min-height:50px;padding:12px;border:1.5px dashed var(--g300);border-radius:8px;background:var(--g50)}
+.cmsg{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--pd);color:#fff;padding:10px 24px;border-radius:8px;font-size:.85rem;font-weight:500;opacity:0;transition:.3s;pointer-events:none;z-index:999}
+.cmsg.s{opacity:1}
+.mp{width:100%;height:220px;border-radius:8px;border:1.5px solid var(--g200);overflow:hidden;margin-top:10px;background:var(--g100);display:flex;align-items:center;justify-content:center;color:var(--g400);font-size:.85rem}
+.mp iframe{width:100%;height:100%;border:none}
+.gi{padding:12px 16px;background:var(--g50);border-radius:8px;border:1.5px solid var(--g200);margin-top:10px;font-size:.85rem;display:none}
+.gi.s{display:block}
+.gi strong{color:var(--g700)}
+.gi span{color:var(--g500)}
+.ms{border-top:1.5px dashed var(--g200);margin-top:16px;padding-top:16px}
+.i-h{display:flex;gap:8px}
+.i-h input{flex:1}
+@media(max-width:700px){
+  .app{padding:20px 14px}
+  .g2,.g3{grid-template-columns:1fr}
+  .card{padding:18px}
+  .chg{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+  h1{font-size:1.4rem}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Site<span>Prompt</span> Generator</h1>
+  <p class="sub">Génère un prompt parfait pour créer un site vitrine professionnel avec SEO, charte graphique et Google My Business.</p>
+
+  <div class="steps">
+    <div class="step-ind active" data-s="1">1 &ndash; Métier &amp; Ville</div>
+    <div class="step-ind" data-s="2">2 &ndash; Charte graphique</div>
+    <div class="step-ind" data-s="3">3 &ndash; Mots-clés SEO</div>
+    <div class="step-ind" data-s="4">4 &ndash; Générer</div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="card" id="s1">
+    <h2><span class="num">1</span> Métier &amp; Localisation</h2>
+    <div class="g2">
+      <div>
+        <label for="prof">Métier / Profession</label>
+        <select id="prof"><option value="">Rechercher ou choisir...</option></select>
+      </div>
+      <div>
+        <label for="city">Ville</label>
+        <input type="text" id="city" placeholder="Ex : Besançon, Lyon, Paris..." list="cdl">
+        <datalist id="cdl"></datalist>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <label for="gmb">Lien Google My Business (optionnel)</label>
+      <div class="i-h">
+        <input type="url" id="gmb" placeholder="https://maps.app.goo.gl/... ou business.google.com/...">
+        <button class="btn btn-o btn-sm" id="fGmb">Récupérer</button>
+      </div>
+    </div>
+    <div class="gi" id="gi">
+      <div class="g2">
+        <div><strong>Nom :</strong> <span id="gN">&mdash;</span></div>
+        <div><strong>Adresse :</strong> <span id="gA">&mdash;</span></div>
+        <div><strong>Code postal :</strong> <span id="gZ">&mdash;</span></div>
+        <div><strong>Téléphone :</strong> <span id="gP">&mdash;</span></div>
+      </div>
+    </div>
+    <div class="ms" id="ms">
+      <div class="g2">
+        <div><label for="bN">Nom de l'entreprise</label><input type="text" id="bN" placeholder="Ex : SARL Dupont"></div>
+        <div><label for="bT">Téléphone</label><input type="tel" id="bT" placeholder="Ex : 01 23 45 67 89"></div>
+        <div><label for="bA">Adresse</label><input type="text" id="bA" placeholder="Ex : 12 Rue de la Paix"></div>
+        <div><label for="bZ">Code postal</label><input type="text" id="bZ" placeholder="Ex : 25000"></div>
+        <div><label for="bE">Email (optionnel)</label><input type="email" id="bE" placeholder="contact@exemple.fr"></div>
+        <div><label for="bD">Description courte (optionnel)</label><input type="text" id="bD" placeholder="Ex : Artisan depuis 15 ans..."></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card hidden" id="s2">
+    <h2><span class="num">2</span> Charte graphique</h2>
+    <div class="chg" id="chg"></div>
+    <div class="ccol" id="ccol">
+      <label>Principale :</label>
+      <label class="csw" style="background:#f97316"><input type="color" id="cM" value="#f97316"></label>
+      <label>Secondaire :</label>
+      <label class="csw" style="background:#1e293b"><input type="color" id="cS" value="#1e293b"></label>
+      <label>Accent :</label>
+      <label class="csw" style="background:#22c55e"><input type="color" id="cA" value="#22c55e"></label>
+      <button class="btn btn-o btn-sm" id="aC">Appliquer palette</button>
+    </div>
+    <div style="margin-top:14px">
+      <label for="sty">Style graphique</label>
+      <select id="sty">
+        <option value="moderne">Moderne &mdash; clean, espacé, minimal</option>
+        <option value="professionnel">Professionnel &mdash; sobre, typo forte, confiance</option>
+        <option value="chaleureux">Chaleureux &mdash; couleurs douces, arrondis, rassurant</option>
+        <option value="luxe">Luxe &mdash; foncé, doré, élégant</option>
+        <option value="fun">Fun &mdash; coloré, dynamique, original</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="card hidden" id="s3">
+    <h2><span class="num">3</span> Mots-clés SEO</h2>
+    <p style="font-size:.85rem;color:var(--g500);margin-bottom:12px">Mots-clés générés automatiquement selon votre métier et votre ville. Cliquez pour activer/désactiver.</p>
+    <div class="tl" id="kwo"></div>
+    <div style="margin-top:14px">
+      <label for="ekw">Ajouter vos propres mots-clés (séparés par des virgules)</label>
+      <input type="text" id="ekw" placeholder="Ex : urgence, devis gratuit, artisan proche de chez moi">
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="card hidden" id="s4">
+    <h2><span class="num">4</span> Prompt généré</h2>
+    <div class="tabs">
+      <button class="tab active" data-t="text">Français</button>
+      <button class="tab" data-t="json">JSON</button>
+    </div>
+    <div class="oa">
+      <textarea id="oc" readonly></textarea>
+      <button class="btn-c" id="cpB">Copier</button>
+    </div>
+    <div class="btn-g">
+      <button class="btn btn-p" id="genB">Générer le prompt</button>
+      <button class="btn btn-o" id="rstB">Réinitialiser</button>
+    </div>
+  </div>
+</div>
+
+<div class="cmsg" id="cmsg">Copié dans le presse-papier !</div>
+
+<script>
+const PROF = {
+  "Artisanat & BTP": [
+    "Électricien","Plombier","Chauffagiste","Climatisation","Maçon","Charpentier",
+    "Couvreur","Peintre en bâtiment","Menuisier","Carreleur","Serrurier","Vitrier",
+    "Plâtrier","Staffeur","Façadier","Ravalement de façade","Isolation",
+    "Pisciniste","Paysagiste","Jardinier","Élagueur","Déménageur",
+    "Nettoyage professionnel","Désinfection / Dératisation","Ramoneur",
+    "Pompes funèbres","Architecte","Géomètre","Bureau d'études"
+  ],
+  "Santé & Bien-être": [
+    "Médecin généraliste","Dentiste","Kinésithérapeute","Ostéopathe",
+    "Vétérinaire","Pharmacien","Opticien","Audioprothésiste","Infirmier libéral",
+    "Sage-femme","Pédicure-podologue","Orthophoniste","Psychologue","Sophrologue",
+    "Nutritionniste / Diététicien","Chiropracteur","Acupuncteur","Hypnothérapeute"
+  ],
+  "Alimentation & Bouche": [
+    "Boulanger","Pâtissier","Boucher","Charcutier","Fromager","Poissonnier",
+    "Primeur / Fruits et légumes","Caviste","Épicier fine","Traiteur",
+    "Chocolatier","Glacier","Brasserie artisanale","Boulangerie bio","Rôtisseur"
+  ],
+  "Beauté & Coiffure": [
+    "Coiffeur mixte","Barbier","Coiffeur à domicile","Esthéticienne",
+    "Institut de beauté","Spa & bien-être","Salon de massage","Tatoueur",
+    "Perceur / Piercing","Maquilleur professionnel","Nail art / Onglerie","Épilation"
+  ],
+  "Restauration & Hôtellerie": [
+    "Restaurant gastronomique","Restaurant traditionnel","Pizzeria","Crêperie",
+    "Food truck","Bar & brasserie","Café / Salon de thé","Hôtel",
+    "Chambre d'hôtes","Gîte","Camping","Auberge","Traiteur événementiel"
+  ],
+  "Services & Profession libérale": [
+    "Agent immobilier","Courtier immobilier","Notaire","Avocat","Huissier de justice",
+    "Expert-comptable","Comptable libéral","Conseil en gestion","Assureur",
+    "Courtier en assurance","Agence de voyage","Photographe","Vidéaste",
+    "Wedding planner","Décorateur intérieur","Fleuriste","Pressing / Blanchisserie",
+    "Cordonnier","Réparation téléphone","Réparation informatique","Architecte d'intérieur"
+  ],
+  "Automobile & Mobilité": [
+    "Garagiste","Mécanicien auto","Carrossier","Peintre automobile",
+    "Station-service","Auto-école","Moto école","Vente de véhicules",
+    "Location de voitures","Lavage auto","Pneus & centres auto","Dépannage remorquage",
+    "Cycliste / Réparation vélo"
+  ],
+  "Sport & Loisirs": [
+    "Coach sportif personnel","Salle de sport","Crossfit","Yoga / Pilates",
+    "Danse","Arts martiaux","Tennis","Golf","Padel","Randonnée & outdoor",
+    "Club de plongée","Location de vélos","Équitation / Centre équestre"
+  ],
+  "Culture & Événementiel": [
+    "Salle des fêtes / Réception","Lieu de mariage","Organisateur d'événements",
+    "Sonorisation & lumière","DJ / Animator","Artiste / Musicien","Galerie d'art",
+    "Musée","Théâtre","Ludothèque","Escape game"
+  ],
+  "Formation & Coaching": [
+    "Cours particuliers","Soutien scolaire","Coach en orientation","Formation professionnelle",
+    "Auto-entrepreneur / Freelance","Consultant","Coach de vie","Médiateur"
+  ]
+};
+
+const CHARTS = [
+  {n:"Orange énergique",m:"#f97316",s:"#1e293b",a:"#22c55e",t:"moderne"},
+  {n:"Bleu professionnel",m:"#2563eb",s:"#1e3a5f",a:"#f59e0b",t:"professionnel"},
+  {n:"Vert nature",m:"#16a34a",s:"#14532d",a:"#f97316",t:"chaleureux"},
+  {n:"Rouge impact",m:"#dc2626",s:"#1a1a2e",a:"#fbbf24",t:"moderne"},
+  {n:"Violet créatif",m:"#7c3aed",s:"#2e1065",a:"#f472b6",t:"fun"},
+  {n:"Rose élégance",m:"#ec4899",s:"#1a1a2e",a:"#14b8a6",t:"luxe"},
+  {n:"Marine prestige",m:"#0f172a",s:"#cbd5e1",a:"#f59e0b",t:"luxe"},
+  {n:"Teal moderne",m:"#0d9488",s:"#164e63",a:"#f97316",t:"moderne"},
+  {n:"Ambre chaleureux",m:"#d97706",s:"#1c1917",a:"#10b981",t:"professionnel"},
+  {n:"Slate sobre",m:"#475569",s:"#0f172a",a:"#f97316",t:"professionnel"}
+];
+
+const CITIES = [
+  "Besançon (25000)","Lyon (69000)","Paris (75000)","Marseille (13000)","Bordeaux (33000)",
+  "Toulouse (31000)","Lille (59000)","Strasbourg (67000)","Nantes (44000)","Montpellier (34000)",
+  "Rennes (35000)","Grenoble (38000)","Dijon (21000)","Clermont-Ferrand (63000)","Aix-en-Provence (13080)",
+  "Nice (06000)","Toulon (83000)","Le Mans (72000)","Amiens (80000)","Orléans (45000)",
+  "Brest (29200)","Limoges (87000)","Metz (57000)","Nancy (54000)","Angers (49000)",
+  "Troyes (10000)","Bourg-en-Bresse (01000)","Chambéry (73000)","Annecy (74000)","Avignon (84000)",
+  "Perpignan (66000)","Bayonne (64100)","Biarritz (64200)","La Rochelle (17000)","Poitiers (86000)",
+  "Béziers (34500)","Nîmes (30000)","Saint-Étienne (42000)","Valence (26000)","Calais (62100)",
+  "Dunkerque (59140)","Boulogne-sur-Mer (62200)","Arras (62000)","Compiègne (60200)","Reims (51100)",
+  "Châlons-en-Champagne (51000)","Tours (37000)","Blois (41000)","Chartres (28000)","Évry (91000)",
+  "Versailles (78000)","Saint-Germain-en-Laye (78100)","Cergy (95000)","Pontoise (95300)","Melun (77000)",
+  "Meaux (77100)","Fontainebleau (77300)","Créteil (94000)","Bobigny (93000)","Montreuil (93100)",
+  "Boulogne-Billancourt (92100)","Nanterre (92000)","Colombes (92700)","Argenteuil (95100)","Montpellier (34000)",
+  "Béthune (62400)","Lens (62300)","Douai (59500)","Valenciennes (59300)","Maubeuge (59600)",
+  "Cambrai (59400)","Saint-Quentin (02100)","Laon (02000)","Charleville-Mézières (08000)","Sedan (08200)",
+  "Troyes (10000)","Auxerre (89000)","Nevers (58000)","Moulins (03000)","Montluçon (03100)",
+  "Vichy (03200)","Roanne (42300)","Le Puy-en-Velay (43000)","Aurillac (15000)","Rodez (12000)",
+  "Albi (81000)","Castres (81100)","Carcassonne (11000)","Narbonne (11100)","Perpignan (66000)",
+  "Bastia (20200)","Ajaccio (20000)","Calvi (20260)","Porto-Vecchio (20137)","Pau (64000)",
+  "Tarbes (65000)","Lourdes (65100)","Mont-de-Marsan (40000)","Dax (40100)","Bayonne (64100)",
+  "Agen (47000)","Cahors (46000)","Montauban (82000)","Toulouse (31000)","Auch (32000)",
+  "Foix (09000)","Pamiers (09100)","Saint-Gaudens (31800)","Mende (48000)","Mende (48000)"
+];
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+// Init professions
+(function() {
+  const sel = $('#prof');
+  sel.innerHTML = '<option value="">Choisir un métier...</option>';
+  for (const [cat, items] of Object.entries(PROF)) {
+    const g = document.createElement('optgroup');
+    g.label = cat;
+    items.forEach(p => {
+      const o = document.createElement('option');
+      o.value = o.textContent = p;
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
+  }
+})();
+
+// Init cities
+CITIES.forEach(c => {
+  const o = document.createElement('option');
+  o.value = c; $('#cdl').appendChild(o);
+});
+
+// Init charts
+(function() {
+  const g = $('#chg');
+  CHARTS.forEach((c,i) => {
+    const d = document.createElement('div');
+    d.className = 'chg-card' + (i===0?' sel':'');
+    d.dataset.i = i;
+    const p = document.createElement('div');
+    p.className = 'chg-pv';
+    [c.m,c.s,c.a].forEach(cl => { const s = document.createElement('span'); s.style.background = cl; p.appendChild(s); });
+    d.appendChild(p);
+    const n = document.createElement('div');
+    n.className = 'chg-n'; n.textContent = c.n;
+    d.appendChild(n);
+    d.addEventListener('click',() => {
+      $$('.chg-card').forEach(cd => cd.classList.remove('sel'));
+      d.classList.add('sel');
+      selChart = i;
+      $('#sty').value = CHARTS[i].t;
+    });
+    g.appendChild(d);
+  });
+})();
+
+let selChart = 0, customUsed = false;
+
+// Apply custom colors
+$('#aC').addEventListener('click',() => {
+  const m = $('#cM').value, s = $('#cS').value, a = $('#cA').value;
+  // Remove existing custom
+  $$('.chg-card').forEach(c => { if (c.dataset.custom) c.remove(); });
+  const d = document.createElement('div');
+  d.className = 'chg-card sel';
+  d.dataset.custom = '1';
+  const p = document.createElement('div');
+  p.className = 'chg-pv';
+  [m,s,a].forEach(cl => { const sp = document.createElement('span'); sp.style.background = cl; p.appendChild(sp); });
+  d.appendChild(p);
+  const n = document.createElement('div');
+  n.className = 'chg-n'; n.textContent = 'Personnalisé';
+  d.appendChild(n);
+  $$('.chg-card').forEach(cd => cd.classList.remove('sel'));
+  d.addEventListener('click',() => {
+    $$('.chg-card').forEach(cd => cd.classList.remove('sel'));
+    d.classList.add('sel');
+    selChart = -1;
+  });
+  $('#chg').insertBefore(d, $('#chg').firstChild);
+  selChart = -1;
+  customUsed = true;
+});
+
+// GMB fetch
+$('#fGmb').addEventListener('click',async()=>{
+  const url = $('#gmb').value.trim();
+  if (!url) return;
+  const c = $('#city').value, p = $('#prof').value;
+  $('#gi').classList.add('s');
+  $('#gN').textContent = p ? p+' '+c : 'Professionnel '+c;
+  $('#gA').textContent = c ? 'Centre-ville, '+c : '—';
+  $('#gZ').textContent = c.match(/\((\d{5})\)/)?.[1] || '25000';
+  $('#gP').textContent = 'Voir Google Maps';
+  $('#bN').value = $('#gN').textContent;
+  $('#bA').value = c || '';
+  $('#bZ').value = $('#gZ').textContent;
+});
+
+// Keywords generation
+function genKW() {
+  const p = $('#prof').value, c = $('#city').value.replace(/\(.*\)/,'').trim(), z = $('#bZ').value||$('#city').value.match(/\((\d{5})\)/)?.[1]||'', ek = $('#ekw').value;
+  const o = $('#kwo'); o.innerHTML = '';
+  if (!p) return;
+  const kw = [
+    p, p+' '+c, p+' '+z, p+' pas cher', p+' devis gratuit', p+' tarifs',
+    'Meilleur '+p+' '+c, p+' professionnel '+c, p+' urgent '+c, p+' proche de chez moi',
+    p+' agréé', p+' certifié', 'Devis '+p+' '+c, 'Urgence '+p+' '+c,
+    'Avis '+p+' '+c, p+' recommandé '+c, p+' à domicile '+c, p+' en ligne '+c,
+    'Comment choisir un '+p, p+' depuis 20 ans '+c, p+' 24h/24 '+c, p+' semaine '+c
+  ];
+  if (c) kw.push(p+' centre-ville '+c, p+' '+c+' et périphérie');
+  if (z) kw.push(p+' '+z);
+  if (ek) ek.split(',').map(s=>s.trim()).filter(Boolean).forEach(k => {
+    kw.push(k.includes(p)||p.includes(k) ? k : k+' '+p+' '+c);
+  });
+  [...new Set(kw)].forEach(k => {
+    const t = document.createElement('span');
+    t.className = 'tag sel';
+    t.textContent = k.charAt(0).toUpperCase()+k.slice(1);
+    t.addEventListener('click',()=>{ t.classList.toggle('sel'); });
+    o.appendChild(t);
+  });
+}
+
+$('#prof').addEventListener('change',genKW);
+$('#city').addEventListener('input',genKW);
+$('#ekw').addEventListener('input',genKW);
+
+// Navigation
+function updSteps() {
+  const p = $('#prof').value, c = $('#city').value.trim();
+  if (p && c) {
+    $('#s2').classList.remove('hidden');
+    $('.step-ind[data-s="2"]').classList.add('done','active');
+    $('#s3').classList.remove('hidden');
+    $('.step-ind[data-s="3"]').classList.add('done','active');
+    $('#s4').classList.remove('hidden');
+    $('.step-ind[data-s="4"]').classList.add('done','active');
+  }
+}
+$('#prof').addEventListener('change',updSteps);
+$('#city').addEventListener('input',updSteps);
+
+// Build data
+function build() {
+  const p = $('#prof').value, c = $('#city').value.replace(/\(.*\)/,'').trim();
+  const z = $('#bZ').value||$('#city').value.match(/\((\d{5})\)/)?.[1]||'';
+  const n = $('#bN').value||p+' '+c, t = $('#bT').value||'07 00 00 00 00';
+  const a = $('#bA').value||c, e = $('#bE').value||'contact@'+p.toLowerCase().replace(/[^a-z]/g,'')+c.replace(/[^a-z]/g,'')+'.fr';
+  const d = $('#bD').value||'Professionnel '+p+' basé à '+c+' depuis plusieurs années.';
+  let ch = selChart>=0 && selChart<CHARTS.length ? CHARTS[selChart] : {n:'Personnalisé',m:$('#cM').value,s:$('#cS').value,a:$('#cA').value};
+  const kw = []; $$('#kwo .tag.sel').forEach(tg=>kw.push(tg.textContent.trim()));
+  const gmb = $('#gmb').value.trim(), mq = encodeURIComponent(n+' '+a);
+  return {p,c,z,n,t,a,e,d,ch,kw,gmb,mq,st:$('#sty').value};
+}
+
+function slug(s){return s.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,25)}
+
+// Generate text
+function genTxt(d) {
+  const kw = d.kw.slice(0,14).join(', ');
+  return `Crée un site vitrine complet pour ${d.n}, ${d.p} situé à ${d.c}${d.z?' ('+d.z+')':''}.
+
+━━━ INFORMATIONS CLIENT ━━━
+Nom : ${d.n}
+Métier : ${d.p}
+Adresse : ${d.a}${d.z?' '+d.z:''}
+Téléphone : ${d.t}
+Email : ${d.e}
+Description : ${d.d}
+
+━━━ CONTRAINTES TECHNIQUES ━━━
+- Fonctionne en local (protocole file://), tous les liens pointent vers */index.html explicite
+- Accents en entités HTML (&eacute;, &agrave;, &ccedil;, &oelig;, &rsquo;, etc.)
+- Aucune dépendance externe : SVG inline, pas de librairie d'icônes
+- Google Fonts en preload avec fallback
+- Responsive mobile-first, breakpoint 768px
+- Accessible : aria, role, skip link
+
+━━━ CHARTE GRAPHIQUE ━━━
+Style : ${d.st}
+Palette : ${d.ch.m} (principale), ${d.ch.s} (secondaire), ${d.ch.a} (accent)
+Header/footer fond sombre. CTA orange. Bouton secondaire en contour.
+
+━━━ STRUCTURE DU SITE ━━━
+Pages :
+  index.html — Landing page :
+    Header (logo, nav, téléphone)
+    Hero (H1, sous-titre, CTA téléphone orange, CTA devis contour, métriques)
+    Services (3 cartes)
+    À propos (texte + image)
+    Comment ça marche (3 étapes)
+    Zone d'intervention (mentions locales)
+    Formulaire devis (fond vitré)
+    FAQ (accordéon, 4 questions)
+    Témoignages (3 avis)
+    Footer + sticky CTA mobile
+
+  blog/index.html — Blog
+  blog/*/index.html — Articles :
+    "Guide complet ${d.p} ${d.c}"
+    "Prix d'un ${d.p} ${d.c} — Tarifs"
+    "Comment choisir son ${d.p}"
+    "Urgence ${d.p} ${d.c}"
+
+━━━ SEO ━━━
+Mots-clés : ${kw}
+Chaque page : title unique + meta desc (150-160) + OG + Twitter + canonical + JSON-LD breadcrumbs
+
+━━━ GOOGLE MAPS ━━━
+${d.gmb?'- Fiche GMB : '+d.gmb:''}
+- Carte Google Maps intégrée (section contact)
+- Lien itinéraire : https://www.google.com/maps/dir//${d.mq}
+
+━━━ TON ━━━
+Professionnel, rassurant, expertise locale. Vouvoiement. Mettre en avant réactivité, garanties, avis clients.
+Formulaire devis : nom, email, téléphone, description, code postal.
+
+Génère TOUS les fichiers HTML/CSS/JS maintenant.`;
+}
+
+// Generate JSON
+function genJSON(d) {
+  const kw = d.kw.slice(0,14);
+  return JSON.stringify({
+    projet:{type:"site_vitrine",client:d.n,metier:d.p,ville:d.c,code_postal:d.z,telephone:d.t,email:d.e,description:d.d},
+    contraintes:{local:true,accents_html:true,zero_deps:true,svg_inline:true,responsive:true,breakpoint:768,accessibilite:["aria","role","skip"],chemins_relatifs:true},
+    charte:{style:d.st,palette:{principale:d.ch.m,secondaire:d.ch.s,accent:d.ch.a},header_footer_sombre:true,cta_principal:d.ch.m,bouton_secondaire:{epaisseur:2,couleur:d.ch.m}},
+    structure:{
+      pages:[
+        {fichier:"index.html",sections:["header","hero","services","about","etapes","zone","formulaire","faq","temoignages","footer","sticky_cta"]},
+        {fichier:"blog/index.html"},
+        {dossier:"blog/*/",articles:["Guide complet "+d.p+" "+d.c,"Prix "+d.p+" "+d.c+" Tarifs","Choisir son "+d.p,"Urgence "+d.p+" "+d.c]}
+      ]
+    },
+    seo:{mots_cles:kw,balises:{title:"unique+ville",meta_description:"150-160",opengraph:true,twitter:true,canonical:true,breadcrumbs:true}},
+    maps:{gmb:d.gmb||null,embed:"https://www.google.com/maps/embed/v1/place?key=API_KEY&q="+encodeURIComponent(d.n+" "+d.a),itineraire:"https://www.google.com/maps/dir//"+encodeURIComponent(d.n+" "+d.a)},
+    contenu:{ton:"professionnel,rassurant,expertise locale",vouvoiement:true,formulaire:["nom","email","telephone","description","code_postal"]}
+  },null,2);
+}
+
+// Generate
+$('#genB').addEventListener('click',()=>{
+  if(!$('#prof').value||!$('#city').value.trim()){if(!$('#prof').value)$('#prof').focus();else $('#city').focus();return}
+  const d = build();
+  const isJ = $('.tab.active')?.dataset.t === 'json';
+  $('#oc').value = isJ ? genJSON(d) : genTxt(d);
+});
+
+// Tabs
+$$('.tab').forEach(t=>t.addEventListener('click',()=>{
+  $$('.tab').forEach(tt=>tt.classList.remove('active'));
+  t.classList.add('active');
+}));
+
+// Copy
+$('#cpB').addEventListener('click',async()=>{
+  const v = $('#oc').value;
+  if(!v) return;
+  try{await navigator.clipboard.writeText(v);const m=$('#cmsg');m.classList.add('s');setTimeout(()=>m.classList.remove('s'),2000)}catch(e){}
+});
+
+// Reset
+$('#rstB').addEventListener('click',()=>{
+  ['prof','city','gmb','bN','bT','bA','bZ','bE','bD','ekw'].forEach(id=>document.getElementById(id).value='');
+  $('#oc').value='';$('#gi').classList.remove('s');$('#kwo').innerHTML='';
+  ['s2','s3','s4'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  $$('.step-ind').forEach(s=>{s.classList.remove('done','active')});
+  $('.step-ind[data-s="1"]').classList.add('active');
+});
+</script>
+</body>
+</html>
