@@ -141,9 +141,31 @@ textarea{resize:vertical;min-height:80px}
         <datalist id="cdl"></datalist>
       </div>
     </div>
+    <div style="margin-top:10px">
+      <label for="customProf">Ajouter un métier personnalisé</label>
+      <div class="i-h">
+        <input type="text" id="customProf" placeholder="Ex : Marbrerie funéraire, Miroitier d'art...">
+        <button class="btn btn-o btn-sm" id="addProfBtn">+ Ajouter</button>
+      </div>
+    </div>
     <div style="margin-top:14px">
       <label for="gmb">Lien Google My Business (optionnel)</label>
       <input type="url" id="gmb" placeholder="https://maps.app.goo.gl/... ou business.google.com/...">
+    </div>
+    <div style="margin-top:14px">
+      <label for="activityType">Type d'activité</label>
+      <select id="activityType">
+        <option value="service">Prestation de services / Artisanat / BTP</option>
+        <option value="commerce">Commerce de proximité / Boutique</option>
+        <option value="profession_liberale">Profession libérale / Consultant</option>
+        <option value="sante">Santé / Bien-être / Médical</option>
+        <option value="restauration">Restauration / Hôtellerie</option>
+        <option value="sport_loisirs">Sport / Loisirs / Culture</option>
+        <option value="formation">Formation / Coaching</option>
+        <option value="automobile">Automobile / Mobilité</option>
+        <option value="finance">Finance / Crédit / Assurance</option>
+        <option value="en_ligne">Activité en ligne / Digital</option>
+      </select>
     </div>
     <div style="margin-top:14px">
       <label for="gmbContent">Collez ici le contenu copié de votre fiche Google Business (texte à l'aveugle)</label>
@@ -555,7 +577,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
 // Init professions
-(function() {
+(function initProfessions() {
   const sel = $('#prof');
   sel.innerHTML = '<option value="">Choisir un métier...</option>';
   for (const [cat, items] of Object.entries(PROF)) {
@@ -568,7 +590,43 @@ const $$ = s => document.querySelectorAll(s);
     });
     sel.appendChild(g);
   }
+  // Custom group
+  renderCustomProfessions();
 })();
+
+function renderCustomProfessions(){
+  const sel = $('#prof');
+  let cg = sel.querySelector('optgroup[data-custom]');
+  if(cg) cg.remove();
+  if(!CUSTOM_PROF.length) return;
+  cg = document.createElement('optgroup');
+  cg.label = 'Métiers personnalisés';
+  cg.dataset.custom = '1';
+  CUSTOM_PROF.forEach(p => {
+    const o = document.createElement('option');
+    o.value = o.textContent = p;
+    cg.appendChild(o);
+  });
+  sel.appendChild(cg);
+}
+
+$('#addProfBtn').addEventListener('click', () => {
+  const input = $('#customProf');
+  const val = input.value.trim();
+  if(!val) return;
+  if(!CUSTOM_PROF.includes(val) && !Object.values(PROF).flat().includes(val)){
+    CUSTOM_PROF.push(val);
+    renderCustomProfessions();
+    $('#prof').value = val;
+    genKW();
+    updSteps();
+    input.value = '';
+  }
+});
+
+$('#customProf').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); $('#addProfBtn').click(); }
+});
 
 // Init cities
 CITIES.forEach(c => {
@@ -1007,10 +1065,11 @@ function build() {
   const gmb = $('#gmb').value.trim(), mq = encodeURIComponent(n+' '+a);
   const siret = $('#bSiret').value.trim();
   const statut = $('#bStatut').value;
+  const activityType = $('#activityType').value || 'service';
   // Résoudre le geo depuis GEO_DATA
   const geoKey = Object.keys(GEO_DATA).find(k => c.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(c.toLowerCase()));
   const geo = geoKey ? GEO_DATA[geoKey] : { quartiers: [], proches: [] };
-  return {p,c,z,n,t,a,e,d,ch,kw,gmb,mq,st:$('#sty').value,geo,siret,statut};
+  return {p,c,z,n,t,a,e,d,ch,kw,gmb,mq,st:$('#sty').value,geo,siret,statut,activityType};
 }
 
 function slug(s){return s.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,25)}
@@ -1022,11 +1081,29 @@ function genTxt(d) {
   const articles = buildArticles(d);
   const imgPrompts = buildImagePrompts(imgs, d);
   const year = new Date().getFullYear();
+  const type = d.activityType || 'service';
+
+  // Terminologie adaptée au type d'activité
+  const VOC = {
+    service:     { action: 'prestation', actions: 'prestations', cta: 'Demander un devis', cta2: 'Prendre rendez-vous', form: 'devis', section: 'Services', zone: 'Zone d\'intervention', mentionGeo: 'intervient', articleTheme: 'prestations' },
+    commerce:    { action: 'produit', actions: 'produits', cta: 'Voir la boutique', cta2: 'Nous contacter', form: 'contact', section: 'Nos produits / Univers', zone: 'Zone de livraison / retrait', mentionGeo: 'livre ou accueille', articleTheme: 'produits et conseils' },
+    profession_liberale: { action: 'mission', actions: 'missions', cta: 'Prendre rendez-vous', cta2: 'Demander un diagnostic', form: 'rendez-vous', section: 'Expertises', zone: 'Zone de consultation', mentionGeo: 'accompagne', articleTheme: 'expertises' },
+    sante:       { action: 'soin', actions: 'soins / consultations', cta: 'Prendre rendez-vous', cta2: 'Urgence', form: 'rendez-vous', section: 'Soins & spécialités', zone: 'Zone de soins', mentionGeo: 'accueille', articleTheme: 'soins et conseils santé' },
+    restauration:{ action: 'service', actions: 'services / menus', cta: 'Réserver une table', cta2: 'Commander', form: 'réservation', section: 'Carte / Menu', zone: 'Livraison & retrait', mentionGeo: 'accueille', articleTheme: 'carte et actualités' },
+    sport_loisirs:{ action: 'activité', actions: 'activités', cta: 'Réserver', cta2: 'Essai gratuit', form: 'inscription', section: 'Activités', zone: 'Zone d\'activité', mentionGeo: 'accueille', articleTheme: 'activités' },
+    formation:   { action: 'formation', actions: 'formations', cta: 'Demander un programme', cta2: 'S\'inscrire', form: 'inscription', section: 'Formations', zone: 'Zone de formation', mentionGeo: 'forme', articleTheme: 'formations' },
+    automobile:  { action: 'prestation', actions: 'prestations', cta: 'Devis rapide', cta2: 'Prendre rendez-vous', form: 'devis', section: 'Services auto', zone: 'Zone d\'intervention', mentionGeo: 'intervient', articleTheme: 'services automobile' },
+    finance:     { action: 'service', actions: 'services', cta: 'Étude personnalisée', cta2: 'Prendre rendez-vous', form: 'rendez-vous', section: 'Nos solutions', zone: 'Zone de conseil', mentionGeo: 'accompagne', articleTheme: 'conseils financiers' },
+    en_ligne:    { action: 'service', actions: 'services', cta: 'Demander une démo', cta2: 'Nous contacter', form: 'contact', section: 'Solutions', zone: 'Intervention à distance', mentionGeo: 'accompagne', articleTheme: 'solutions digitales' }
+  };
+  const v = VOC[type] || VOC.service;
+
   return `Crée un site vitrine complet pour ${d.n}, ${d.p} situé à ${d.c}${d.z?' ('+d.z+')':''}.
 
 ━━━ INFORMATIONS CLIENT ━━━
 Nom : ${d.n}
-Métier : ${d.p}
+Métier / Activité : ${d.p}
+Type d'activité : ${type}
 Adresse : ${d.a}${d.z?' '+d.z:''}
 Téléphone : ${d.t}
 Email : ${d.e}
@@ -1098,29 +1175,29 @@ Recherche et intègre UNIQUEMENT des images libres de droits (Unsplash, Pexels, 
 ━━━ CHARTE GRAPHIQUE ━━━
 Style : ${d.st}
 Palette : ${d.ch.m} (principale), ${d.ch.s} (secondaire), ${d.ch.a} (accent)
-Header/footer fond sombre. CTA orange. Bouton secondaire en contour.
+Header/footer fond sombre. CTA principal ${d.ch.m}. Bouton secondaire en contour.
 
 ━━━ STRUCTURE DU SITE ━━━
 Pages :
   index.html — Landing page :
     Header (logo, nav, téléphone)
-    Hero (H1, sous-titre, CTA téléphone orange, CTA devis contour, métriques)
-    Services (3 cartes)
+    Hero (H1, sous-titre, CTA "${v.cta}" couleur principale, CTA secondaire "${v.cta2}" contour, métriques)
+    ${v.section} (3 cartes présentant les ${v.actions} principales)
     À propos (texte + image)
-    Comment ça marche (3 étapes)
-    Zone d'intervention (mentions locales)
-    Formulaire devis (fond vitré)
+    Comment ça marche (3 étapes adaptées au type "${type}")
+    ${v.zone} (mentions locales)
+    Formulaire ${v.form} (fond vitré)
     FAQ (accordéon, 4 questions)
-    Témoignages (3 avis)
+    Témoignages / Avis clients (3 avis)
     Footer + sticky CTA mobile
 
   blog/index.html — Blog avec 12 articles SEO
-  blog/*/index.html — Articles (12 articles) :
+  blog/*/index.html — Articles (12 articles) sur le thème "${v.articleTheme}" :
 ${articles.map((a,i)=>`    ${(i+1).toString().padStart(2,'0')}. "${a}"`).join('\n')}
 
   mentions-legales/index.html — Mentions légales LCEN
   politique-confidentialite/index.html — Politique de confidentialité RGPD
-  cgv/index.html — Conditions Générales de Vente
+  ${type === 'commerce' || type === 'restauration' ? 'cgv/index.html — Conditions Générales de Vente + conditions de livraison/retrait' : 'cgv/index.html — Conditions Générales de Vente / Conditions Générales de Prestation'}
 
 ━━━ SEO ━━━
 Mots-clés principaux (cœur de cible) :
@@ -1136,7 +1213,7 @@ COMMUNES À 30 KM (${d.geo.proches.length}) — créer une section dédiée sur 
 ${d.geo.proches.join(', ')}
 
 INSTRUCTIONS SEO GÉOGRAPHIQUES (obligatoires) :
-→ Section "Zone d'intervention" sur index.html : liste visuelle de TOUTES ces communes avec un lien anchor #contact
+→ Section "${v.zone}" sur index.html : liste visuelle de TOUTES ces communes avec un lien anchor #contact
 → JSON-LD LocalBusiness : "areaServed" doit contenir TOUTES les communes proches + ville principale
 → Meta description de index.html : mentionner la ville ET 2-3 communes proches
 → Chaque article de blog : citer naturellement 3-5 quartiers ou communes selon le sujet
@@ -1150,8 +1227,8 @@ ${d.gmb?'- Fiche GMB : '+d.gmb:''}
 - Lien itinéraire : https://www.google.com/maps/dir//${d.mq}
 
 ━━━ TON ━━━
-Professionnel, rassurant, expertise locale. Vouvoiement. Mettre en avant réactivité, garanties, avis clients.
-Formulaire devis : nom, email, téléphone, description, code postal.
+Professionnel, rassurant, expertise locale. Vouvoiement. Mettre en avant réactivité, qualité, avis clients et confiance.
+Formulaire ${v.form} : nom, email, téléphone, sujet / description, code postal (si pertinent).
 
 ━━━ PAGES LÉGALES À GÉNÉRER ━━━
 Créer les 3 fichiers suivants avec le même header/footer que index.html :
@@ -1174,28 +1251,35 @@ ${d.siret ? '- SIRET : ' + d.siret : '- SIRET : [À compléter]'}
 Contenu RGPD obligatoire (Règlement UE 2016/679) :
 - Responsable de traitement : ${d.n}, ${d.a}, ${d.z} ${d.c}
 - DPO / contact RGPD : ${d.e}
-- Données collectées : formulaire de contact (nom, email, téléphone, description, CP)
-- Finalité : réponse aux demandes de devis uniquement
+- Données collectées : formulaire de ${v.form} (nom, email, téléphone, description, CP)
+- Finalité : réponse aux demandes uniquement
 - Base légale : consentement de l'utilisateur (art. 6.1.a RGPD)
 - Durée de conservation : 3 ans à compter du dernier contact
 - Destinataires : ${d.n} uniquement, pas de partage avec des tiers
 - Droits : accès, rectification, suppression, portabilité, opposition → ${d.e}
 - Droit de réclamation : CNIL, 3 place de Fontenoy, 75007 Paris
 - Cookies : aucun cookie de traçage, uniquement cookies techniques
-- Formulaire de contact : les données ne sont pas stockées automatiquement
+- Formulaire : les données ne sont pas stockées automatiquement
 
-📄 cgv/index.html (Conditions Générales de Vente)
-Contenu recommandé pour artisan/prestataire :
-- Vendeur / Prestataire : ${d.n}, ${d.statut || 'EI'}, ${d.a}, ${d.z} ${d.c}, SIRET ${d.siret || '[À compléter]'}
-- Champ d'application : devis, prestations de ${d.p} à ${d.c} et communes voisines
+📄 cgv/index.html
+${type === 'commerce' || type === 'restauration' ? `Contenu CGV pour vente de ${v.actions} / restauration :
+- Vendeur : ${d.n}, ${d.statut || 'EI'}, ${d.a}, ${d.z} ${d.c}, SIRET ${d.siret || '[À compléter]'}
+- Produits / menus : description générale des ${v.actions}
+- Prix : HT/TTC selon statut, modalités de paiement
+- Commande : processus de commande en ligne ou sur place
+- Livraison / retrait : zones desservies, délais, frais
+- Droit de rétractation : 14 jours pour les ventes à distance (si applicable)
+- Garanties légales : conformité et vices cachés
+- Responsabilité et litiges : médiation CNPM-MEDIATION-CONSOMMATION, droit français, tribunaux compétents : ${d.c}` : `Contenu CGV / CGP pour prestations de ${d.p} :
+- Prestataire : ${d.n}, ${d.statut || 'EI'}, ${d.a}, ${d.z} ${d.c}, SIRET ${d.siret || '[À compléter]'}
+- Champ d'application : ${v.actions} de ${d.p} à ${d.c} et communes voisines
 - Devis : gratuit, valable 30 jours, engagement à la signature
 - Prix : HT/TTC selon statut (préciser si TVA applicable)
 - Paiement : modalités (acompte, solde à réception)
-- Délai d'intervention : sous réserve des disponibilités
+- Délai : sous réserve des disponibilités
 - Garanties légales : garantie décennale si applicable, garantie de parfait achèvement
 - Responsabilité : plafond à la valeur du devis signé
-- Litiges : médiation CNPM-MEDIATION-CONSOMMATION avant recours judiciaire
-- Droit applicable : droit français, tribunaux compétents : ${d.c}
+- Litiges : médiation CNPM-MEDIATION-CONSOMMATION, droit français, tribunaux compétents : ${d.c}`}
 
 RÈGLES COMMUNES AUX 3 PAGES LÉGALES :
 → Liens vers ces pages dans le footer de TOUTES les pages (index.html, blog, articles)
@@ -1217,82 +1301,86 @@ ${imgPrompts.map(p => `\n[${p.file}]\n${p.prompt}`).join('\n')}`;
 
 function buildImages(d) {
   const p = d.p, c = d.c, st = d.st, cm = d.ch.m, ca = d.ch.a;
+  const type = d.activityType || 'service';
   const ps = slug(p), cs = slug(c);
+  const isCommerce = type === 'commerce' || type === 'restauration';
+  const isSante = type === 'sante';
+  const isAuto = type === 'automobile';
   return [
     {
       file: `logo.${ps}.svg`, format: 'SVG', kind: 'logo',
       description: `Logo / icône stylisé pour ${p}`,
       unsplashQuery: null, pexelsQuery: null,
-      heroicon: 'wrench-screwdriver',
-      heroiconUrl: 'https://heroicons.com (chercher "tool" ou le métier)',
+      heroicon: isCommerce ? 'shopping-bag' : isSante ? 'heart' : isAuto ? 'wrench-screwdriver' : 'briefcase',
+      heroiconUrl: 'https://heroicons.com',
       svgSourceNote: "Télécharger le SVG path depuis heroicons.com et l'intégrer inline dans le HTML",
-      aiPrompt: `Flat vector icon logo for a "${p}" professional service business. Minimalist, single color white on transparent background. Clean geometric shapes, no text, no gradients. SVG format. Style: ${st}, modern, professional. The icon must immediately suggest the trade "${p}".`
+      aiPrompt: `Flat vector icon logo for a "${p}" business. Minimalist, single color white on transparent background. Clean geometric shapes, no text, no gradients. SVG format. Style: ${st}, modern, professional. The icon must immediately suggest "${p}".`
     },
     {
       file: `hero-${ps}-${cs}.jpg`, format: 'JPG', kind: 'hero',
-      description: `Photo hero : ${p} en action à ${c}`,
-      unsplashQuery: `${p} professional work site`,
-      pexelsQuery: `${p} professional at work`,
+      description: `Photo hero : ${p} à ${c}`,
+      unsplashQuery: isCommerce ? `${p} shop store front` : isSante ? `${p} consultation professional` : `${p} professional work`,
+      pexelsQuery: isCommerce ? `${p} boutique professional` : isSante ? `${p} health professional` : `${p} professional at work`,
       heroicon: null,
-      aiPrompt: `Cinematic professional photo of a ${p} actively working, natural daylight, sharp focus on hands and tools, blurred modern background. Colors matching ${cm} and ${ca}. 16:9 ratio, high resolution. No watermark, photorealistic. Location: ${c}, France.`
+      aiPrompt: `Cinematic professional photo for a ${p} in ${c}, France. Natural daylight, sharp focus, blurred modern background. ${st} style, colors ${cm} and ${ca}. 16:9 ratio, high resolution. No watermark, photorealistic.`
     },
     {
       file: `about-${ps}.jpg`, format: 'JPG', kind: 'about',
-      description: `Photo équipe / atelier ${p} à ${c}`,
-      unsplashQuery: `${p} team workshop professionals`,
-      pexelsQuery: `professional team craftsman`,
+      description: `Photo équipe / local ${p} à ${c}`,
+      unsplashQuery: isCommerce ? `${p} team shop interior` : `${p} team workshop professionals`,
+      pexelsQuery: isCommerce ? `small business team retail` : `professional team craftsman`,
       heroicon: null,
-      aiPrompt: `Professional photo of a small ${p} business team or workshop in ${c}, France. Warm, trustworthy, welcoming atmosphere. ${st} style. Natural light. Multiple professionals visible. Photorealistic.`
+      aiPrompt: `Professional photo of a small ${p} business team or location in ${c}, France. Warm, trustworthy, welcoming atmosphere. ${st} style. Natural light. Multiple professionals visible. Photorealistic.`
     },
     {
-      file: 'service-1.jpg', format: 'JPG', kind: 'service',
-      description: `Prestation principale de ${p}`,
-      unsplashQuery: `${p} main service work`,
-      pexelsQuery: `${p} professional service`,
+      file: isCommerce ? 'product-1.jpg' : 'service-1.jpg', format: 'JPG', kind: 'service',
+      description: isCommerce ? `Photo principale de ${p}` : `Prestation principale de ${p}`,
+      unsplashQuery: isCommerce ? `${p} product detail` : `${p} main service work`,
+      pexelsQuery: isCommerce ? `${p} product showcase` : `${p} professional service`,
       heroicon: null,
-      aiPrompt: `Close-up professional photo of a ${p} performing their main service. Sharp detail, professional tools visible, clean environment. Modern lighting, ${st} aesthetic, accent color ${ca}. Photorealistic.`
+      aiPrompt: `Close-up professional photo of a ${p}. Sharp detail, clean environment. Modern lighting, ${st} aesthetic, accent color ${ca}. Photorealistic.`
     },
     {
-      file: 'service-2.jpg', format: 'JPG', kind: 'service',
-      description: `Deuxième prestation de ${p}`,
-      unsplashQuery: `${p} renovation work detail`,
-      pexelsQuery: `craftsmanship professional work`,
+      file: isCommerce ? 'product-2.jpg' : 'service-2.jpg', format: 'JPG', kind: 'service',
+      description: isCommerce ? `Deuxième visuel de ${p}` : `Deuxième prestation de ${p}`,
+      unsplashQuery: isCommerce ? `${p} collection` : `${p} renovation work detail`,
+      pexelsQuery: isCommerce ? `${p} product display` : `craftsmanship professional work`,
       heroicon: null,
-      aiPrompt: `Professional photo showing a secondary service of a ${p}. Different angle and context from service-1.jpg. High quality, ${st} style, colors ${cm}. Photorealistic, no watermark.`
+      aiPrompt: `Professional photo showing a second aspect of ${p}. Different angle and context from ${isCommerce?'product-1.jpg':'service-1.jpg'}. High quality, ${st} style, colors ${cm}. Photorealistic, no watermark.`
     },
     {
-      file: 'service-3.jpg', format: 'JPG', kind: 'service',
-      description: `Troisième prestation de ${p}`,
-      unsplashQuery: `professional finishing work quality`,
-      pexelsQuery: `professional artisan work`,
+      file: isCommerce ? 'product-3.jpg' : 'service-3.jpg', format: 'JPG', kind: 'service',
+      description: isCommerce ? `Troisième visuel de ${p}` : `Troisième prestation de ${p}`,
+      unsplashQuery: isCommerce ? `${p} customer experience` : `professional finishing work quality`,
+      pexelsQuery: isCommerce ? `${p} shop service` : `professional artisan work`,
       heroicon: null,
-      aiPrompt: `Professional photo of a third distinct service by a ${p}. Emphasize quality and finish. ${st} style, warm lighting, accent color ${ca}. Photorealistic.`
+      aiPrompt: `Professional photo of a third distinct aspect of ${p}. Emphasize quality. ${st} style, warm lighting, accent color ${ca}. Photorealistic.`
     },
     {
       file: 'step-1.svg', format: 'SVG', kind: 'icon',
-      description: 'Étape 1 : Prise de contact / diagnostic',
+      description: isCommerce ? 'Étape 1 : Découvrir / Choisir' : 'Étape 1 : Prise de contact',
       unsplashQuery: null, pexelsQuery: null,
-      heroicon: 'phone',
-      heroiconUrl: 'https://heroicons.com — icône "phone"',
-      svgSourceNote: 'Chercher "phone" sur heroicons.com, copier le SVG path, intégrer inline',
-      aiPrompt: `Minimal flat icon representing a phone call or first contact. Single color white on transparent. 48x48px viewBox. Geometric, ultra-clean lines. No text. SVG-ready. Style: ${st}.`
+      heroicon: isCommerce ? 'magnifying-glass' : 'phone',
+      heroiconUrl: 'https://heroicons.com',
+      svgSourceNote: 'Télécharger le SVG path depuis heroicons.com, intégrer inline',
+      aiPrompt: `Minimal flat icon representing ${isCommerce ? 'browsing or choosing' : 'first contact / phone call'}. Single color white on transparent. 48x48px viewBox. Geometric, ultra-clean lines. No text. SVG-ready. Style: ${st}.`
     },
     {
       file: 'step-2.svg', format: 'SVG', kind: 'icon',
-      description: 'Étape 2 : Intervention / réalisation',
+      description: isCommerce ? 'Étape 2 : Commander / Réserver' : 'Étape 2 : Intervention / Réalisation',
       unsplashQuery: null, pexelsQuery: null,
-      heroicon: 'wrench-screwdriver',
-      heroiconUrl: 'https://heroicons.com — icône "wrench-screwdriver"',
-      svgSourceNote: 'Chercher "wrench" sur heroicons.com, copier le SVG path, intégrer inline',
-      aiPrompt: `Minimal flat icon representing tools or work in progress. Single color white on transparent. 48x48px viewBox. Geometric, clean. No text. SVG-ready. Style: ${st}.`
+      heroicon: isCommerce ? 'shopping-cart' : 'wrench-screwdriver',
+      heroiconUrl: 'https://heroicons.com',
+      svgSourceNote: 'Télécharger le SVG path depuis heroicons.com, intégrer inline',
+      aiPrompt: `Minimal flat icon representing ${isCommerce ? 'order or booking' : 'work in progress / tools'}. Single color white on transparent. 48x48px viewBox. Geometric, clean. No text. SVG-ready. Style: ${st}.`
     },
     {
       file: 'step-3.svg', format: 'SVG', kind: 'icon',
-      description: 'Étape 3 : Livraison / satisfaction client',
+      description: isCommerce ? 'Étape 3 : Recevoir / Profiter' : 'Étape 3 : Livraison / Satisfaction',
       unsplashQuery: null, pexelsQuery: null,
       heroicon: 'check-badge',
-      heroiconUrl: 'https://heroicons.com — icône "check-badge"',
-      svgSourceNote: 'Chercher "check-badge" sur heroicons.com, copier le SVG path, intégrer inline',
+      heroiconUrl: 'https://heroicons.com',
+      svgSourceNote: 'Télécharger le SVG path depuis heroicons.com, intégrer inline',
       aiPrompt: `Minimal flat icon representing satisfaction, completion or a checkmark badge. Single color white on transparent. 48x48px viewBox. Geometric, professional. No text. SVG-ready. Style: ${st}.`
     },
     {
@@ -1324,23 +1412,153 @@ function buildImages(d) {
       description: `Icône carte zone d'intervention ${c}`,
       unsplashQuery: null, pexelsQuery: null,
       heroicon: 'map-pin',
-      heroiconUrl: 'https://heroicons.com — icône "map-pin"',
-      svgSourceNote: 'Chercher "map-pin" sur heroicons.com, copier le SVG path, intégrer inline',
+      heroiconUrl: 'https://heroicons.com',
+      svgSourceNote: 'Télécharger le SVG path depuis heroicons.com, intégrer inline',
       aiPrompt: `Minimal flat icon of a map with a location pin or service area circles. Single color white on transparent. 48x48px viewBox. Clean geometric. No text. SVG-ready. Style: ${st}.`
     },
     {
       file: 'contact-bg.jpg', format: 'JPG', kind: 'contact',
       description: `Photo fond section contact ${p}`,
-      unsplashQuery: `${p} professional background workspace`,
-      pexelsQuery: `professional dark background workspace`,
+      unsplashQuery: isCommerce ? `${p} shop background` : `${p} professional background workspace`,
+      pexelsQuery: isCommerce ? `retail dark background` : `professional dark background workspace`,
       heroicon: null,
-      aiPrompt: `Wide cinematic photo for a contact section background. Dark or semi-dark tone (white text must be readable on top). ${p} trade atmosphere, ${st} style, subtle use of ${cm} and ${ca}. 16:9 ratio. Slightly blurred background. Photorealistic.`
+      aiPrompt: `Wide cinematic photo for a contact section background. Dark or semi-dark tone (white text must be readable on top). ${p} atmosphere, ${st} style, subtle use of ${cm} and ${ca}. 16:9 ratio. Slightly blurred background. Photorealistic.`
     }
   ];
 }
 
 function buildArticles(d){
   const p = d.p, c = d.c;
+  const t = d.activityType || 'service';
+  if(t === 'commerce'){
+    return [
+      `Guide d'achat ${p} à ${c}`,
+      `Où acheter du ${p} à ${c} ?`,
+      `Prix ${p} à ${c} — Tarifs 2024`,
+      `Nouveautés ${p} ${c}`,
+      `Comparatif ${p} à ${c}`,
+      `Meilleur ${p} ${c} : comment choisir`,
+      `Avis clients ${p} ${c}`,
+      `${p} pas cher à ${c}`,
+      `${p} livraison ${c}`,
+      `Retrait magasin ${p} ${c}`,
+      `FAQ ${p} ${c}`,
+      `Promotions ${p} ${c}`
+    ];
+  }
+  if(t === 'sante'){
+    return [
+      `Quand consulter un ${p} à ${c} ?`,
+      `Prix consultation ${p} ${c} — Tarifs`,
+      `Comment choisir son ${p} à ${c}`,
+      `Urgence ${p} ${c} : que faire ?`,
+      `Les soins proposés par votre ${p} à ${c}`,
+      `Questions à poser à votre ${p} avant la première consultation`,
+      `Délai pour obtenir un rendez-vous ${p} à ${c}`,
+      `Astuces santé recommandées par un ${p}`,
+      `Comparatif ${p} à ${c} : comment choisir le bon`,
+      `Témoignages patients ${p} ${c}`,
+      `Pourquoi choisir un ${p} local à ${c}`,
+      `Les erreurs à éviter avec un ${p}`
+    ];
+  }
+  if(t === 'profession_liberale' || t === 'finance'){
+    return [
+      `Guide complet ${p} ${c}`,
+      `Honoraires ${p} ${c} — Tarifs`,
+      `Comment choisir son ${p} à ${c}`,
+      `Urgence ${p} ${c} : que faire ?`,
+      `Les avantages de faire appel à un ${p} professionnel`,
+      `Questions à poser à votre ${p} avant de signer`,
+      `Délai d'intervention d'un ${p} à ${c}`,
+      `Astuces pour optimiser avec un ${p}`,
+      `Comparatif ${p} à ${c} : comment choisir le bon`,
+      `Témoignages clients ${p} ${c}`,
+      `Pourquoi choisir un ${p} local à ${c}`,
+      `Les erreurs à éviter avec un ${p}`
+    ];
+  }
+  if(t === 'restauration'){
+    return [
+      `Menu ${p} à ${c} — Carte et tarifs`,
+      `Meilleur ${p} à ${c}`,
+      `Réservation ${p} ${c}`,
+      `Livraison ${p} ${c}`,
+      `Menu du jour ${p} ${c}`,
+      `Avis ${p} ${c}`,
+      `Événements ${p} ${c}`,
+      `Plats signatures ${p} ${c}`,
+      `Cuisine maison ${p} ${c}`,
+      `Allergènes et régimes ${p} ${c}`,
+      `Groupes et séminaires ${p} ${c}`,
+      `Privatisation ${p} ${c}`
+    ];
+  }
+  if(t === 'sport_loisirs'){
+    return [
+      `Guide ${p} à ${c}`,
+      `Tarifs ${p} ${c}`,
+      `Horaires ${p} ${c}`,
+      `Cours débutants ${p} ${c}`,
+      `Cours enfants ${p} ${c}`,
+      `Équipement nécessaire ${p}`,
+      `Avantages ${p} ${c}`,
+      `Stage intensif ${p} ${c}`,
+      `Événements ${p} ${c}`,
+      `Bilan gratuit ${p} ${c}`,
+      `Coach personnel ${p} ${c}`,
+      `FAQ ${p} ${c}`
+    ];
+  }
+  if(t === 'formation'){
+    return [
+      `Formations ${p} à ${c}`,
+      `Tarifs formation ${p} ${c}`,
+      `Calendrier formations ${p} ${c}`,
+      `Formation certifiante ${p}`,
+      `Formation en ligne ${p}`,
+      `Cours particuliers ${p} ${c}`,
+      `Préparation examen ${p}`,
+      `Témoignages élèves ${p} ${c}`,
+      `Pourquoi choisir ${p} à ${c}`,
+      `Méthode pédagogique ${p}`,
+      `FAQ formations ${p}`,
+      `Financement CPF ${p}`
+    ];
+  }
+  if(t === 'automobile'){
+    return [
+      `Guide ${p} à ${c}`,
+      `Prix ${p} ${c} — Tarifs`,
+      `Urgence ${p} ${c}`,
+      `Rendez-vous ${p} ${c}`,
+      `Diagnostic ${p} ${c}`,
+      `Révision ${p} ${c}`,
+      `Pièces détachées ${p}`,
+      `Garantie ${p} ${c}`,
+      `Avis clients ${p} ${c}`,
+      `Dépanneur ${p} ${c}`,
+      `Contrôle technique ${p}`,
+      `FAQ ${p} ${c}`
+    ];
+  }
+  if(t === 'en_ligne'){
+    return [
+      `Services ${p} à ${c}`,
+      `Tarifs ${p} ${c}`,
+      `Comment ça marche ${p}`,
+      `Démo ${p} ${c}`,
+      `Avantages ${p}`,
+      `Cas clients ${p}`,
+      `Support client ${p}`,
+      `Sécurité des données ${p}`,
+      `Intégrations ${p}`,
+      `FAQ ${p}`,
+      `Témoignages ${p} ${c}`,
+      `Pourquoi choisir ${p}`
+    ];
+  }
+  // default service
   return [
     `Guide complet ${p} ${c}`,
     `Prix d'un ${p} ${c} — Tarifs 2024`,
@@ -1359,18 +1577,28 @@ function buildArticles(d){
 
 function buildImagePrompts(imgs,d){
   const style = d.st;
+  const type = d.activityType || 'service';
+  const context = type === 'commerce' ? 'product display / shop atmosphere' :
+                  type === 'sante' ? 'medical / wellness setting' :
+                  type === 'restauration' ? 'restaurant / hospitality atmosphere' :
+                  type === 'sport_loisirs' ? 'sport / leisure activity' :
+                  type === 'profession_liberale' || type === 'finance' ? 'professional consulting office' :
+                  type === 'formation' ? 'training / classroom environment' :
+                  type === 'automobile' ? 'automotive workshop' :
+                  type === 'en_ligne' ? 'digital / tech workspace' :
+                  'professional trade service';
   return imgs.map(img => {
     let prompt = '';
     if(img.format === 'SVG'){
-      prompt = `Icône vectorielle minimaliste monochrome, style ${style}, représentant : ${img.description}. Fond transparent, lignes propres, adapté à un site web professionnel. Sauvegarder en SVG.`;
+      prompt = `Flat vector icon, style ${style}, representing: ${img.description}. Single color white on transparent background. Clean geometric SVG lines, 48x48 viewBox. Context: ${context}. No text, no gradients.`;
     } else if(img.kind === 'testimonial'){
-      prompt = `Portrait photo réaliste et chaleureux d'un client souriant, ambiance professionnelle, lumière douce, fond flou intérieur moderne. Style cohérent avec le métier ${d.p} à ${d.c}. Image libre de droits.`;
+      prompt = `Portrait of a happy satisfied customer/client, professional appearance, genuine warm smile, soft bokeh indoor background. Natural light. Context: ${context}. Photorealistic, trustworthy. No watermark.`;
     } else if(img.kind === 'hero'){
-      prompt = `Photographie professionnelle haute qualité d'un ${d.p} en pleine intervention / travail à ${d.c}, ambiance ${style}, éclairage naturel, couleurs ${d.ch.m}, ${d.ch.s}, ${d.ch.a}. Image libre de droits, photoréaliste.`;
+      prompt = `Cinematic professional photo for a ${d.p} in ${d.c}, France. ${context}, natural daylight, sharp focus, blurred modern background. ${style} style, colors ${d.ch.m}, ${d.ch.s}, ${d.ch.a}. 16:9 ratio, photorealistic.`;
     } else if(img.kind === 'about'){
-      prompt = `Photographie professionnelle d'un atelier / local / équipe représentant le métier de ${d.p} à ${d.c}, ambiance ${style}, chaleureux et rassurant. Image libre de droits.`;
+      prompt = `Professional photo of a ${d.p} business team, place or workspace in ${d.c}, France. ${context}, ${style} style, warm and trustworthy. Photorealistic.`;
     } else {
-      prompt = `Photographie professionnelle et cohérente avec le métier de ${d.p} à ${d.c} : ${img.description}. Style ${style}, palette ${d.ch.m}, ${d.ch.s}, ${d.ch.a}. Image libre de droits.`;
+      prompt = `Professional photo related to ${d.p} in ${d.c}, France. ${img.description}. ${context}, ${style} style, palette ${d.ch.m}, ${d.ch.s}, ${d.ch.a}. Photorealistic, no watermark.`;
     }
     return {file:img.file, prompt, format:img.format, description:img.description};
   });
@@ -1585,8 +1813,9 @@ function genJSON(d) {
   const imgs = buildImages(d);
   const articles = buildArticles(d);
   const imgPrompts = buildImagePrompts(imgs,d);
+  const type = d.activityType || 'service';
   return JSON.stringify({
-    projet:{type:"site_vitrine",client:d.n,metier:d.p,ville:d.c,code_postal:d.z,telephone:d.t,email:d.e,description:d.d,statut_juridique:d.statut,siret:d.siret||null},
+    projet:{type:"site_vitrine",client:d.n,metier:d.p,activite:type,ville:d.c,code_postal:d.z,telephone:d.t,email:d.e,description:d.d,statut_juridique:d.statut,siret:d.siret||null},
     contraintes:{local:true,accents_html:true,zero_deps:true,svg_inline:true,responsive:true,breakpoint:768,accessibilite:["aria","role","skip"],chemins_relatifs:true},
     performance:{
       cible:"PageSpeed 90+ mobile",
@@ -1608,19 +1837,19 @@ function genJSON(d) {
     charte:{style:d.st,palette:{principale:d.ch.m,secondaire:d.ch.s,accent:d.ch.a},header_footer_sombre:true,cta_principal:d.ch.m,bouton_secondaire:{epaisseur:2,couleur:d.ch.m}},
     structure:{
       pages:[
-        {fichier:"index.html",sections:["header","hero","services","about","etapes","zone","formulaire","faq","temoignages","footer","sticky_cta"]},
+        {fichier:"index.html",sections:["header","hero","produits_ou_services","about","etapes","zone","formulaire","faq","temoignages","footer","sticky_cta"]},
         {fichier:"blog/index.html",articles_count:12},
         {dossier:"blog/*/",articles},
         {fichier:"mentions-legales/index.html",type:"legal",sujet:"mentions_legales_lcen"},
         {fichier:"politique-confidentialite/index.html",type:"legal",sujet:"rgpd"},
-        {fichier:"cgv/index.html",type:"legal",sujet:"cgv_garantie_decennale"}
+        {fichier:"cgv/index.html",type:"legal",sujet:(type==='commerce'||type==='restauration')?"cgv_vente_restauration":"cgv_prestations"}
       ]
     },
     seo:{
       mots_cles:kw,
       geo_local:{ville:d.c,code_postal:d.z,quartiers:d.geo.quartiers,communes_30km:d.geo.proches},
       instructions:[
-        "Section Zone d'intervention avec TOUTES les communes proches + anchor #contact",
+        "Section Zone d'intervention/livraison avec TOUTES les communes proches + anchor #contact",
         "JSON-LD LocalBusiness areaServed = ville + communes proches",
         "Meta description avec ville + 2-3 communes proches",
         "Chaque article blog citer 3-5 quartiers/communes",
@@ -1636,7 +1865,7 @@ function genJSON(d) {
       regles:["liens footer toutes pages","canonical","date derniere mise a jour","banniere cookie localStorage"],
       mentions_legales:{loi:"LCEN art. 6",editeur:d.n,statut:d.statut,adresse:`${d.a}, ${d.z} ${d.c}`,telephone:d.t,email:d.e,siret:d.siret||"[À compléter]",copyright:`${new Date().getFullYear()} ${d.n}`},
       rgpd:{base_legale:"art. 6.1.a consentement",conservation:"3 ans",dpo:d.e,destinataires:d.n,recours:"CNIL"},
-      cgv:{garantie_decennale:true,mediation:"CNPM-MEDIATION-CONSOMMATION",tva_applicable:"selon statut"}
+      cgv:{type:(type==='commerce'||type==='restauration')?"vente_restauration":"prestations",garantie_decennale:(type==='service'||type==='automobile'),mediation:"CNPM-MEDIATION-CONSOMMATION",tva_applicable:"selon statut"}
     },
     contenu:{ton:"professionnel,rassurant,expertise locale",vouvoiement:true,formulaire:["nom","email","telephone","description","code_postal"]}
   },null,2);
@@ -1666,8 +1895,9 @@ $('#cpB').addEventListener('click',async()=>{
 
 // Reset
 $('#rstB').addEventListener('click',()=>{
-  ['prof','city','gmb','bN','bT','bA','bZ','bE','bD','bSiret','ekw'].forEach(id=>document.getElementById(id).value='');
+  ['prof','city','gmb','bN','bT','bA','bZ','bE','bD','bSiret','ekw','customProf'].forEach(id=>document.getElementById(id).value='');
   $('#bStatut').value = 'Auto-entrepreneur';
+  $('#activityType').value = 'service';
   $('#oc').value='';$('#gi').classList.remove('s');$('#kwo').innerHTML='';
   ['s2','s3','s4','sImg'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   $$('.step-ind').forEach(s=>{s.classList.remove('done','active')});
