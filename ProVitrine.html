@@ -87,6 +87,17 @@ textarea{resize:vertical;min-height:80px}
 .ms{border-top:1.5px dashed var(--g200);margin-top:16px;padding-top:16px}
 .i-h{display:flex;gap:8px}
 .i-h input{flex:1}
+.img-list{display:flex;flex-direction:column;gap:12px}
+.img-row{display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--g50);border:1.5px solid var(--g200);border-radius:10px}
+.img-row.replaced{background:#fff7ed;border-color:#fed7aa}
+.img-info{flex:1;min-width:0}
+.img-name{font-weight:700;font-size:.9rem;color:var(--g700);word-break:break-all}
+.img-desc{font-size:.82rem;color:var(--g500);margin-top:2px}
+.img-format{font-size:.75rem;display:inline-block;padding:2px 8px;border-radius:12px;background:var(--g200);color:var(--g600);margin-top:6px;font-weight:600}
+.img-actions{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.img-actions input[type=file]{display:none}
+.img-rep{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--po);background:#fff7ed;padding:6px 12px;border-radius:8px;border:1.5px solid #fed7aa}
+.img-rep button{background:var(--red);color:#fff;border:none;border-radius:6px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.8rem}
 @media(max-width:700px){
   .app{padding:20px 14px}
   .g2,.g3{grid-template-columns:1fr}
@@ -106,6 +117,7 @@ textarea{resize:vertical;min-height:80px}
     <div class="step-ind" data-s="2">2 &ndash; Charte graphique</div>
     <div class="step-ind" data-s="3">3 &ndash; Mots-clés SEO</div>
     <div class="step-ind" data-s="4">4 &ndash; Générer</div>
+    <div class="step-ind" data-s="5">5 &ndash; Images</div>
   </div>
 
   <!-- STEP 1 -->
@@ -199,6 +211,19 @@ textarea{resize:vertical;min-height:80px}
     <div class="btn-g">
       <button class="btn btn-p" id="genB">Générer le prompt</button>
       <button class="btn btn-o" id="rstB">Réinitialiser</button>
+    </div>
+  </div>
+
+  <!-- IMAGE REPLACEMENT -->
+  <div class="card hidden" id="sImg">
+    <h2><span class="num">5</span> Remplacer les images</h2>
+    <p style="font-size:.85rem;color:var(--g500);margin-bottom:14px">
+      Ci-dessous la liste des images que l'IA doit créer. Cliquez sur <strong>+</strong> pour ajouter un remplacement personnalisé. Vous pouvez charger 1, 2, 3 images... ou aucune. Si vous ne remplacez rien, les images libres de droits par défaut seront conservées.
+    </p>
+    <div id="imgList" class="img-list"></div>
+    <div class="btn-g" style="margin-top:18px">
+      <button class="btn btn-p" id="dlReplacements">Télécharger le pack de remplacements</button>
+      <button class="btn btn-o" id="resetImg">Réinitialiser les remplacements</button>
     </div>
   </div>
 </div>
@@ -458,6 +483,9 @@ function slug(s){return s.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,25)}
 // Generate text
 function genTxt(d) {
   const kw = d.kw.slice(0,14).join(', ');
+  const imgs = buildImages(d);
+  const articles = buildArticles(d);
+  const imgPrompts = buildImagePrompts(imgs, d);
   return `Crée un site vitrine complet pour ${d.n}, ${d.p} situé à ${d.c}${d.z?' ('+d.z+')':''}.
 
 ━━━ INFORMATIONS CLIENT ━━━
@@ -475,6 +503,14 @@ Description : ${d.d}
 - Google Fonts en preload avec fallback
 - Responsive mobile-first, breakpoint 768px
 - Accessible : aria, role, skip link
+
+━━━ IMAGES LIBRES DE DROITS ━━━
+Recherche et intègre UNIQUEMENT des images libres de droits (Unsplash, Pexels, Pixabay, licence CC0 / domaine public) cohérentes avec le métier "${d.p}" et la localisation "${d.c}".
+- Minimum 10 images pour le site vitrine + 1 image par article de blog.
+- Formats : JPG/PNG pour photos, SVG pour icônes et illustrations simples.
+- Toutes les images doivent être enregistrées dans le dossier "images/".
+- Nommer les fichiers de façon descriptive et cohérente (ex: hero-plombier-paris.jpg, service-1.jpg...).
+- Si une image n'est pas remplacée par l'utilisateur, garder l'image libre de droits trouvée par défaut.
 
 ━━━ CHARTE GRAPHIQUE ━━━
 Style : ${d.st}
@@ -495,16 +531,14 @@ Pages :
     Témoignages (3 avis)
     Footer + sticky CTA mobile
 
-  blog/index.html — Blog
-  blog/*/index.html — Articles :
-    "Guide complet ${d.p} ${d.c}"
-    "Prix d'un ${d.p} ${d.c} — Tarifs"
-    "Comment choisir son ${d.p}"
-    "Urgence ${d.p} ${d.c}"
+  blog/index.html — Blog avec minimum 10 articles SEO listés
+  blog/*/index.html — Articles (10 articles minimum) :
+${articles.map((a,i)=>`    ${(i+1).toString().padStart(2,'0')}. "${a}"`).join('\n')}
 
 ━━━ SEO ━━━
 Mots-clés : ${kw}
 Chaque page : title unique + meta desc (150-160) + OG + Twitter + canonical + JSON-LD breadcrumbs
+Les 10+ articles de blog doivent cibler chacun au moins 2-3 mots-clés du champ lexical "${d.p}" + "${d.c}".
 
 ━━━ GOOGLE MAPS ━━━
 ${d.gmb?'- Fiche GMB : '+d.gmb:''}
@@ -515,21 +549,183 @@ ${d.gmb?'- Fiche GMB : '+d.gmb:''}
 Professionnel, rassurant, expertise locale. Vouvoiement. Mettre en avant réactivité, garanties, avis clients.
 Formulaire devis : nom, email, téléphone, description, code postal.
 
-Génère TOUS les fichiers HTML/CSS/JS maintenant.`;
+Génère TOUS les fichiers HTML/CSS/JS maintenant.
+
+━━━ LISTE DES IMAGES DU SITE ━━━
+${imgs.map(img => `• ${img.file} — ${img.description} (format : ${img.format})`).join('\n')}
+
+━━━ PROMPTS POUR REGÉNÉRER LES IMAGES AVEC CHATGPT IMAGE ━━━
+Pour chaque image ci-dessous, copie le prompt dans ChatGPT Image et sauvegarde le fichier généré avec le nom exact indiqué dans le dossier "images/".
+${imgPrompts.map(p => `\n[${p.file}]\n${p.prompt}`).join('\n')}`;
 }
+
+function buildImages(d){
+  return [
+    {file:`logo.${d.p.toLowerCase().replace(/[^a-z]/g,'')}.svg`,description:`Icône/logo stylisé du métier de ${d.p}`,format:'SVG',kind:'logo'},
+    {file:`hero-${slug(d.p)}-${slug(d.c)}.jpg`,description:`Photo professionnelle d'un ${d.p} en action à ${d.c}`,format:'JPG',kind:'hero'},
+    {file:`about-${slug(d.p)}.jpg`,description:`Image illustrative de l'entreprise / équipe / atelier / local ${d.p} à ${d.c}`,format:'JPG',kind:'about'},
+    {file:`service-1.jpg`,description:`Photo cohérente illustrant la prestation principale de ${d.p}`,format:'JPG',kind:'service'},
+    {file:`service-2.jpg`,description:`Photo cohérente illustrant une deuxième prestation de ${d.p}`,format:'JPG',kind:'service'},
+    {file:`service-3.jpg`,description:`Photo cohérente illustrant une troisième prestation de ${d.p}`,format:'JPG',kind:'service'},
+    {file:`step-1.svg`,description:`Icône simple étape 1 : prise de contact / diagnostic`,format:'SVG',kind:'icon'},
+    {file:`step-2.svg`,description:`Icône simple étape 2 : intervention / réalisation`,format:'SVG',kind:'icon'},
+    {file:`step-3.svg`,description:`Icône simple étape 3 : livraison / satisfaction`,format:'SVG',kind:'icon'},
+    {file:`testimonial-1.jpg`,description:`Portrait de client satisfait (ambiance professionnelle)`,format:'JPG',kind:'testimonial'},
+    {file:`testimonial-2.jpg`,description:`Portrait de client satisfait (ambiance professionnelle)`,format:'JPG',kind:'testimonial'},
+    {file:`testimonial-3.jpg`,description:`Portrait de client satisfait (ambiance professionnelle)`,format:'JPG',kind:'testimonial'},
+    {file:`zone-intervention.svg`,description:`Icône carte / zone d'intervention autour de ${d.c}`,format:'SVG',kind:'icon'},
+    {file:`contact-bg.jpg`,description:`Photo d'ambiance professionnelle pour la section contact`,format:'JPG',kind:'contact'}
+  ];
+}
+
+function buildArticles(d){
+  const p = d.p, c = d.c;
+  return [
+    `Guide complet ${p} ${c}`,
+    `Prix d'un ${p} ${c} — Tarifs 2024`,
+    `Comment choisir son ${p} à ${c}`,
+    `Urgence ${p} ${c} : que faire ?`,
+    `Les avantages de faire appel à un ${p} professionnel`,
+    `Questions à poser à votre ${p} avant de signer`,
+    `Délai d'intervention d'un ${p} à ${c}`,
+    `Astuces pour entretenir votre installation / matériel avec un ${p}`,
+    `Comparatif ${p} à ${c} : comment choisir le bon`,
+    `Témoignages clients ${p} ${c} : retours d'expérience`,
+    `Pourquoi choisir un ${p} local à ${c}`,
+    `Les erreurs à éviter avec un ${p}`
+  ];
+}
+
+function buildImagePrompts(imgs,d){
+  const style = d.st;
+  return imgs.map(img => {
+    let prompt = '';
+    if(img.format === 'SVG'){
+      prompt = `Icône vectorielle minimaliste monochrome, style ${style}, représentant : ${img.description}. Fond transparent, lignes propres, adapté à un site web professionnel. Sauvegarder en SVG.`;
+    } else if(img.kind === 'testimonial'){
+      prompt = `Portrait photo réaliste et chaleureux d'un client souriant, ambiance professionnelle, lumière douce, fond flou intérieur moderne. Style cohérent avec le métier ${d.p} à ${d.c}. Image libre de droits.`;
+    } else if(img.kind === 'hero'){
+      prompt = `Photographie professionnelle haute qualité d'un ${d.p} en pleine intervention / travail à ${d.c}, ambiance ${style}, éclairage naturel, couleurs ${d.ch.m}, ${d.ch.s}, ${d.ch.a}. Image libre de droits, photoréaliste.`;
+    } else if(img.kind === 'about'){
+      prompt = `Photographie professionnelle d'un atelier / local / équipe représentant le métier de ${d.p} à ${d.c}, ambiance ${style}, chaleureux et rassurant. Image libre de droits.`;
+    } else {
+      prompt = `Photographie professionnelle et cohérente avec le métier de ${d.p} à ${d.c} : ${img.description}. Style ${style}, palette ${d.ch.m}, ${d.ch.s}, ${d.ch.a}. Image libre de droits.`;
+    }
+    return {file:img.file, prompt, format:img.format, description:img.description};
+  });
+}
+
+const REPLACEMENTS = new Map();
+
+function renderImageReplacements(d){
+  const list = $('#imgList');
+  list.innerHTML = '';
+  const imgs = buildImages(d);
+  const prompts = buildImagePrompts(imgs,d);
+  imgs.forEach((img,i) => {
+    const row = document.createElement('div');
+    row.className = 'img-row';
+    row.dataset.file = img.file;
+
+    const info = document.createElement('div');
+    info.className = 'img-info';
+    info.innerHTML = `<div class="img-name">${img.file}</div>
+      <div class="img-desc">${img.description}</div>
+      <span class="img-format">${img.format}</span>
+      <div class="img-desc" style="margin-top:8px;font-style:italic">Prompt ChatGPT Image : ${prompts[i].prompt}</div>`;
+
+    const actions = document.createElement('div');
+    actions.className = 'img-actions';
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/svg+xml,image/png,image/jpeg,image/jpg,image/webp';
+    fileInput.id = 'file-'+i;
+    fileInput.addEventListener('change', e => handleFile(e, img.file, row, actions));
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn btn-o btn-sm';
+    addBtn.innerHTML = '+ Remplacer';
+    addBtn.addEventListener('click', () => fileInput.click());
+
+    actions.appendChild(fileInput);
+    actions.appendChild(addBtn);
+    row.appendChild(info);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+  $('#sImg').classList.remove('hidden');
+}
+
+function handleFile(e, fileName, row, actions){
+  const f = e.target.files[0];
+  if(!f) return;
+  REPLACEMENTS.set(fileName, f);
+  row.classList.add('replaced');
+  // remove old reps
+  actions.querySelectorAll('.img-rep').forEach(r=>r.remove());
+  const rep = document.createElement('div');
+  rep.className = 'img-rep';
+  rep.innerHTML = `<span>${f.name}</span><button title="Retirer">×</button>`;
+  rep.querySelector('button').addEventListener('click', () => {
+    REPLACEMENTS.delete(fileName);
+    rep.remove();
+    row.classList.remove('replaced');
+    e.target.value = '';
+  });
+  actions.appendChild(rep);
+}
+
+async function downloadReplacements(){
+  if(REPLACEMENTS.size === 0){
+    const m = $('#cmsg'); m.textContent = 'Aucune image de remplacement sélectionnée'; m.classList.add('s'); setTimeout(()=>m.classList.remove('s'),2500);
+    return;
+  }
+  for(const [name,file] of REPLACEMENTS){
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    await new Promise(r=>setTimeout(r,200));
+  }
+  const m = $('#cmsg'); m.textContent = REPLACEMENTS.size + ' fichier(s) téléchargé(s)'; m.classList.add('s'); setTimeout(()=>m.classList.remove('s'),2500);
+}
+
+$('#resetImg').addEventListener('click', ()=>{
+  REPLACEMENTS.clear();
+  $$('.img-row').forEach(r => { r.classList.remove('replaced'); r.querySelectorAll('.img-rep').forEach(e=>e.remove()); r.querySelector('input[type=file]').value=''; });
+});
+
+$('#dlReplacements').addEventListener('click', downloadReplacements);
 
 // Generate JSON
 function genJSON(d) {
   const kw = d.kw.slice(0,14);
+  const imgs = buildImages(d);
+  const articles = buildArticles(d);
+  const imgPrompts = buildImagePrompts(imgs,d);
   return JSON.stringify({
     projet:{type:"site_vitrine",client:d.n,metier:d.p,ville:d.c,code_postal:d.z,telephone:d.t,email:d.e,description:d.d},
     contraintes:{local:true,accents_html:true,zero_deps:true,svg_inline:true,responsive:true,breakpoint:768,accessibilite:["aria","role","skip"],chemins_relatifs:true},
+    images:{
+      source:"libres_de_droits",
+      dossier:"images/",
+      minimum:"10 images site + 1 image par article de blog",
+      formats:["JPG","PNG","SVG"],
+      liste:imgs,
+      prompts_regeneration:imgPrompts,
+      comportement:"garder images libres par defaut si l'utilisateur ne remplace pas"
+    },
     charte:{style:d.st,palette:{principale:d.ch.m,secondaire:d.ch.s,accent:d.ch.a},header_footer_sombre:true,cta_principal:d.ch.m,bouton_secondaire:{epaisseur:2,couleur:d.ch.m}},
     structure:{
       pages:[
         {fichier:"index.html",sections:["header","hero","services","about","etapes","zone","formulaire","faq","temoignages","footer","sticky_cta"]},
-        {fichier:"blog/index.html"},
-        {dossier:"blog/*/",articles:["Guide complet "+d.p+" "+d.c,"Prix "+d.p+" "+d.c+" Tarifs","Choisir son "+d.p,"Urgence "+d.p+" "+d.c]}
+        {fichier:"blog/index.html",articles_count:10},
+        {dossier:"blog/*/",articles}
       ]
     },
     seo:{mots_cles:kw,balises:{title:"unique+ville",meta_description:"150-160",opengraph:true,twitter:true,canonical:true,breadcrumbs:true}},
@@ -544,6 +740,7 @@ $('#genB').addEventListener('click',()=>{
   const d = build();
   const isJ = $('.tab.active')?.dataset.t === 'json';
   $('#oc').value = isJ ? genJSON(d) : genTxt(d);
+  renderImageReplacements(d);
 });
 
 // Tabs
@@ -563,9 +760,10 @@ $('#cpB').addEventListener('click',async()=>{
 $('#rstB').addEventListener('click',()=>{
   ['prof','city','gmb','bN','bT','bA','bZ','bE','bD','ekw'].forEach(id=>document.getElementById(id).value='');
   $('#oc').value='';$('#gi').classList.remove('s');$('#kwo').innerHTML='';
-  ['s2','s3','s4'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['s2','s3','s4','sImg'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   $$('.step-ind').forEach(s=>{s.classList.remove('done','active')});
   $('.step-ind[data-s="1"]').classList.add('active');
+  REPLACEMENTS.clear();
 });
 </script>
 </body>
