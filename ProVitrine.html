@@ -98,7 +98,14 @@ textarea{resize:vertical;min-height:80px}
 .img-actions input[type=file]{display:none}
 .img-rep{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--po);background:#fff7ed;padding:6px 12px;border-radius:8px;border:1.5px solid #fed7aa}
 .img-rep button{background:var(--red);color:#fff;border:none;border-radius:6px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.8rem}
-@media(max-width:700px){
+.img-src-tabs{display:flex;gap:4px;margin-top:10px;border-bottom:2px solid var(--g200);flex-wrap:wrap}
+.img-src-tab{padding:6px 12px;border:none;background:none;font-size:.78rem;font-weight:600;color:var(--g400);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s}
+.img-src-tab.active{color:var(--po);border-color:var(--po)}
+.img-src-panel{padding:10px 0}
+.img-prompt-box{background:var(--pd);color:#e2e8f0;border-radius:8px;padding:12px;font-size:.8rem;line-height:1.5}
+.img-prompt-label{font-size:.7rem;font-weight:700;color:var(--g400);text-transform:uppercase;margin-bottom:6px;letter-spacing:.04em}
+.img-prompt-text{font-family:'Cascadia Code','Fira Code',monospace;font-size:.78rem;white-space:pre-wrap;word-break:break-word}
+.img-src-panel a,.img-src-panel button{margin-top:4px}
   .app{padding:20px 14px}
   .g2,.g3{grid-template-columns:1fr}
   .card{padding:18px}
@@ -156,6 +163,18 @@ textarea{resize:vertical;min-height:80px}
         <div><label for="bA">Adresse</label><input type="text" id="bA" placeholder="Ex : 12 Rue de la Paix"></div>
         <div><label for="bZ">Code postal</label><input type="text" id="bZ" placeholder="Ex : 25000"></div>
         <div><label for="bE">Email (optionnel)</label><input type="email" id="bE" placeholder="contact@exemple.fr"></div>
+        <div><label for="bSiret">SIRET (optionnel)</label><input type="text" id="bSiret" placeholder="Ex : 123 456 789 00010"></div>
+        <div><label for="bStatut">Statut juridique</label>
+          <select id="bStatut">
+            <option value="Auto-entrepreneur">Auto-entrepreneur / Micro-entreprise</option>
+            <option value="SARL">SARL</option>
+            <option value="EURL">EURL</option>
+            <option value="SAS">SAS</option>
+            <option value="SASU">SASU</option>
+            <option value="EI">Entreprise Individuelle</option>
+            <option value="SA">SA</option>
+          </select>
+        </div>
         <div><label for="bD">Description courte (optionnel)</label><input type="text" id="bD" placeholder="Ex : Artisan depuis 15 ans..."></div>
       </div>
     </div>
@@ -420,29 +439,266 @@ $('#fGmb').addEventListener('click',async()=>{
   $('#bZ').value = $('#gZ').textContent;
 });
 
+const GEO_DATA = {
+
+  "Besançon": {
+    quartiers: [
+      "La Boucle","Battant","Les Chaprais","Bregille","Saint-Ferjeux","Montrapon",
+      "Planoise","Saint-Claude","Palente-Orchamps","Clairs-Soleils","Témis",
+      "Trépillot","Velotte","Chailluz",
+      "Grette","Mazagran","Polygone","Villarceau","Les Arènes","Marulaz",
+      "Les Cras","Fontaine-Argent","Mouillère","Rotonde","Chasnot",
+      "Prés-de-Vaux","Chaffanjon","L'Amitié","L'Oratoire","Rosemont",
+      "Montrapon","Fontaine-Écu","Les Montboucons","La Bouloie","Montjoux",
+      "Orchamps","Combe-Saragosse","Vaites","Île-de-France","Époisses",
+      "Cassin","Chateaufarine","Micropolis","Hauts-du-Chazal","Malcombe",
+      "Viotte","Madeleine","Saint-Jean","Rivotte","Chamars"
+    ],
+    proches: [
+      "Thise","Chalezeule","Roche-lez-Beaupré","Saône","Pirey","Châtillon-le-Duc",
+      "Pouilley-les-Vignes","Chemaudin-et-Vaux","Serre-les-Sapins","Les Auxons",
+      "Franois","Mamirolle","Morre","Larnod","Pugey","Chalèze","Miserey-Salines",
+      "Baume-les-Dames","Roulans","Marchaux","Deluz","Ornans","Quingey",
+      "Saint-Vit","Boussières","Rancenay","Roset-Fluans","Avanne-Aveney",
+      "Montfaucon","École-Valentin","Pelousey","Bonnay","Nancray",
+      "Busy","Gennes","Byans-sur-Doubs","Abbans-Dessus","Rurey"
+    ]
+  },
+
+  "Lyon": {
+    quartiers: [
+      "Presqu'île","Croix-Rousse","Vieux-Lyon","Gerland","Part-Dieu","Confluence",
+      "Monplaisir","Guillotière","Brotteaux","États-Unis","Mermoz","Duchère",
+      "Vaise","Saint-Just","Fourvière","Point-du-Jour","Ménival","Champvert",
+      "Langlet-Santy","Bachut","Montplaisir","Mouche","Perrache","Ainay"
+    ],
+    proches: [
+      "Villeurbanne","Bron","Vénissieux","Saint-Fons","Caluire-et-Cuire","Rillieux-la-Pape",
+      "Décines-Charpieu","Meyzieu","Chassieu","Genas","Corbas","Saint-Priest",
+      "Mions","Communay","Solaize","Pierre-Bénite","Oullins","Sainte-Foy-lès-Lyon",
+      "Tassin-la-Demi-Lune","Écully","Dardilly","Limonest","Sathonay-Camp",
+      "Fontaines-sur-Saône","Neuville-sur-Saône","Albigny-sur-Saône","Couzon-au-Mont-d'Or",
+      "Saint-Germain-au-Mont-d'Or","Fleurieu-sur-Saône","Genay","Massieux","Trévoux","Chazay-d'Azergues"
+    ]
+  },
+
+  "Paris": {
+    quartiers: [
+      "Marais","Montmartre","Bastille","Oberkampf","Nation","Belleville","Ménilmontant",
+      "Père-Lachaise","Buttes-Chaumont","Pigalle","Opéra","Châtelet","Saint-Germain-des-Prés",
+      "Montparnasse","Denfert","Alésia","Plaisance","Vaugirard","Convention","Grenelle",
+      "Invalides","Trocadéro","Passy","Auteuil","Batignolles","Épinettes","Clignancourt",
+      "Goutte-d'Or","La Chapelle","Flandre","Villette","Combat"
+    ],
+    proches: [
+      "Vincennes","Montreuil","Bagnolet","Romainville","Les Lilas","Pantin","Aubervilliers",
+      "Saint-Denis","Saint-Ouen","Clichy","Levallois-Perret","Neuilly-sur-Seine",
+      "Boulogne-Billancourt","Issy-les-Moulineaux","Vanves","Malakoff","Montrouge",
+      "Bagneux","Châtillon","Clamart","Meudon","Sèvres","Saint-Cloud","Rueil-Malmaison",
+      "Nanterre","Puteaux","Courbevoie","Asnières-sur-Seine","Gennevilliers","Colombes",
+      "Argenteuil","Sarcelles","Épinay-sur-Seine","Villetaneuse"
+    ]
+  },
+
+  "Marseille": {
+    quartiers: [
+      "Vieux-Port","Panier","Joliette","Belle de Mai","Endoume","Mazargues",
+      "Saint-Barnabé","Les Goudes","La Timone","Château-Gombert","Saint-Loup",
+      "La Capelette","Bompard","Roucas-Blanc","La Plaine","Noailles","Belsunce",
+      "Arenc","La Blancarde","Montolivet","Saint-Marcel","La Valentine","La Rose",
+      "Les Trois-Lucs","Sainte-Marthe","Les Aygalades","Saint-Antoine","La Gavotte"
+    ],
+    proches: [
+      "Aix-en-Provence","Aubagne","Martigues","Salon-de-Provence","Istres","Vitrolles",
+      "La Ciotat","Cassis","Carnoux-en-Provence","Gémenos","Roquevaire","Auriol",
+      "Allauch","Plan-de-Cuques","Septèmes-les-Vallons","Les Pennes-Mirabeau","Rognac",
+      "Châteauneuf-les-Martigues","Carry-le-Rouet","Ensuès-la-Redonne","Gignac-la-Nerthe",
+      "Saint-Victoret","Velaux","Cabriès","Bouc-Bel-Air","Gardanne","Peynier",
+      "Peypin","Cuges-les-Pins","La Destrousse","Saint-Savournin","Fuveau","Rousset"
+    ]
+  },
+
+  "Toulouse": {
+    quartiers: [
+      "Capitole","Saint-Cyprien","Carmes","Minimes","Rangueil","Mirail","Côte Pavée",
+      "Borderouge","Compans-Caffarelli","Sept-Deniers","Lalande","Izards","Trois-Cocus",
+      "Papus","Empalot","Bagatelle","Croix-de-Pierre","Patte-d'Oie","Saint-Simon",
+      "Purpan","Lardenne","Ginestous","Sesquières","Montaudran","Pouvourville",
+      "Saouzelong","Roseraie","Amidonniers","Chalets","Saint-Aubin"
+    ],
+    proches: [
+      "Blagnac","Colomiers","Tournefeuille","Plaisance-du-Touch","Muret","Portet-sur-Garonne",
+      "Ramonville-Saint-Agne","Castanet-Tolosan","Labège","Balma","L'Union","Aucamville",
+      "Cornebarrieu","Aussonne","Beauzelle","Fenouillet","Saint-Alban","Pibrac",
+      "Léguevin","Fontenilles","Fonsorbes","Cugnaux","Villeneuve-Tolosane","Roques",
+      "Labarthe-sur-Lèze","Auterive","Nailloux","Caraman","Lanta","Montgiscard",
+      "Baziège","Villefranche-de-Lauragais","Montastruc-la-Conseillère","Verfeil"
+    ]
+  },
+
+  "Bordeaux": {
+    quartiers: [
+      "Saint-Michel","Chartrons","Bacalan","Caudéran","Mériadeck","Victoire","Saint-Augustin",
+      "Grand Parc","Bastide","Nansouty","Capucins","Saint-Pierre","Pey-Berland",
+      "Belcier","Gare Saint-Jean","Quinconces","Jardin Public","Judaïque","Croix-Blanche",
+      "Ginko","Floirac","Bègles","Talence","Pessac","Mérignac","Saint-Jean"
+    ],
+    proches: [
+      "Mérignac","Pessac","Talence","Gradignan","Villenave-d'Ornon","Bègles","Floirac",
+      "Cenon","Lormont","Bassens","Carbon-Blanc","Ambès","Saint-Loubès","Ambarès-et-Lagrave",
+      "Parempuyre","Blanquefort","Eysines","Saint-Aubin-de-Médoc","Le Taillan-Médoc",
+      "Saint-Jean-d'Illac","Martillac","Cadaujac","Saint-Médard-d'Eyrans","Beautiran",
+      "Podensac","Portets","Latresne","Carignan-de-Bordeaux","Bonnetan","Créon",
+      "Le Bouscat","Bruges","Mios","Gujan-Mestras","La Teste-de-Buch"
+    ]
+  },
+
+  "Lille": {
+    quartiers: [
+      "Vieux-Lille","Moulins","Fives","Wazemmes","Bois-Blancs","Lomme","Hellemmes",
+      "Euralille","Saint-Maurice","Esquermes","Vauban","Cormontaigne","Bourg","Bois-Blancs",
+      "Faubourg-de-Béthune","Lille-Sud","Porte-de-Douai","Saint-Philibert","Gambetta",
+      "Jardin-Vauban","Centre-Ville","Rihour","République","Saint-Sauveur"
+    ],
+    proches: [
+      "Roubaix","Tourcoing","Villeneuve-d'Ascq","Marcq-en-Barœul","Mons-en-Barœul",
+      "Loos","Haubourdin","Lambersart","La Madeleine","Saint-André-lez-Lille",
+      "Wambrechies","Quesnoy-sur-Deûle","Comines","Armentières","Halluin",
+      "Wervicq-Sud","Bondues","Mouvaux","Roncq","Neuville-en-Ferrain","Wattrelos",
+      "Croix","Wasquehal","Hem","Ronchin","Templemars","Seclin","Lesquin",
+      "Fretin","Vendeville","Noyelles-lès-Seclin","Libercourt","Carvin","Lens"
+    ]
+  },
+
+  "Nantes": {
+    quartiers: [
+      "Île de Nantes","Bouffay","Procé","Chantenay","Doulon","Bellevue","Zola",
+      "Saint-Félix","Breil","Malakoff","Dervallières","Nantes-Nord","Bottière",
+      "Pin-Sec","Saint-Joseph-de-Porterie","Erdre-et-Cens","La Beaujoire",
+      "Pont-du-Cens","Les Batignolles","Clos-Toreau","Chêne-des-Anglais",
+      "Hauts-Pavés","Saint-Pasquier","Canclaux","Talensac"
+    ],
+    proches: [
+      "Saint-Herblain","Rezé","Orvault","Carquefou","Sainte-Luce-sur-Loire","Vertou",
+      "Bouguenais","Saint-Sébastien-sur-Loire","La Montagne","Indre","Couëron",
+      "Saint-Jean-de-Boiseau","Brains","Pont-Saint-Martin","Aigrefeuille-sur-Maine",
+      "Le Loroux-Bottereau","Thouaré-sur-Loire","Mauves-sur-Loire","Ligné","Nort-sur-Erdre",
+      "Treillières","Sucé-sur-Erdre","La Chapelle-sur-Erdre","Sautron","Vigneux-de-Bretagne",
+      "Saint-Étienne-de-Montluc","Cordemais","Paimbœuf","Saint-Brevin-les-Pins",
+      "Pornic","Saint-Père-en-Retz","Bourgneuf-en-Retz","Machecoul","Montagne"
+    ]
+  },
+
+  "Strasbourg": {
+    quartiers: [
+      "Petite France","Krutenau","Neudorf","Meinau","Hautepierre","Robertsau",
+      "Cronenbourg","Koenigshoffen","Elsau","Port du Rhin","Orangerie","Contades",
+      "Esplanade","Montagne-Verte","Musau","Stockfeld","Illkirch-Graffenstaden",
+      "Lingolsheim","Ostwald","Schiltigheim","Bischheim","Hœnheim","Souffelweyersheim",
+      "Wolfisheim","Eckbolsheim","Oberhausbergen","Mittelhausbergen"
+    ],
+    proches: [
+      "Schiltigheim","Bischheim","Hœnheim","Souffelweyersheim","La Wantzenau",
+      "Reichstett","Vendenheim","Mundolsheim","Oberschaeffolsheim","Lingolsheim",
+      "Ostwald","Illkirch-Graffenstaden","Geispolsheim","Entzheim","Wolfisheim",
+      "Eckbolsheim","Oberhausbergen","Mittelhausbergen","Niederhausbergen",
+      "Achenheim","Kolbsheim","Hangenbieten","Ergersheim","Molsheim","Mutzig",
+      "Obernai","Barr","Sélestat","Benfeld","Erstein","Plobsheim","Fegersheim",
+      "Lipsheim","Eschau","Blaesheim"
+    ]
+  },
+
+  "Montpellier": {
+    quartiers: [
+      "Écusson","Antigone","Port-Marianne","Richter","Cévennes","La Paillade",
+      "Hôpitaux-Facultés","Croix-d'Argent","Figuerolles","Beaux-Arts","Les Aubes",
+      "Mosson","Lemasson","Près-d'Arènes","Plan-des-4-Seigneurs","Ovalie",
+      "Tournezy","Montaubérou","Gély","Celleneuve","Pompignane","Aiguelongue",
+      "Grammont","Euromédecine","Alco","Les Boutonnes"
+    ],
+    proches: [
+      "Castelnau-le-Lez","Lattes","Palavas-les-Flots","Pérols","Mauguio","Lunel",
+      "Saint-Brès","Vendargues","Jacou","Clapiers","Saint-Clément-de-Rivière",
+      "Grabels","Juvignac","Pignan","Fabrègues","Sète","Frontignan","Vic-la-Gardiole",
+      "Mireval","Villeneuve-lès-Maguelone","Baillargues","Saint-Just","Sussargues",
+      "Teyran","Assas","Saint-Gély-du-Fesc","Combaillaux","Murviel-lès-Montpellier",
+      "Saint-Georges-d'Orques","Cournonterral","Poussan","Balaruc-les-Bains",
+      "Gigean","Loupian","Mèze"
+    ]
+  }
+};
+
 // Keywords generation
 function genKW() {
-  const p = $('#prof').value, c = $('#city').value.replace(/\(.*\)/,'').trim(), z = $('#bZ').value||$('#city').value.match(/\((\d{5})\)/)?.[1]||'', ek = $('#ekw').value;
-  const o = $('#kwo'); o.innerHTML = '';
+  const p  = $('#prof').value;
+  const cityRaw = $('#city').value;
+  const c  = cityRaw.replace(/\(.*\)/,'').trim();
+  const z  = $('#bZ').value || cityRaw.match(/\((\d{5})\)/)?.[1] || '';
+  const ek = $('#ekw').value;
+  const o  = $('#kwo');
+  o.innerHTML = '';
   if (!p) return;
-  const kw = [
-    p, p+' '+c, p+' '+z, p+' pas cher', p+' devis gratuit', p+' tarifs',
-    'Meilleur '+p+' '+c, p+' professionnel '+c, p+' urgent '+c, p+' proche de chez moi',
-    p+' agréé', p+' certifié', 'Devis '+p+' '+c, 'Urgence '+p+' '+c,
-    'Avis '+p+' '+c, p+' recommandé '+c, p+' à domicile '+c, p+' en ligne '+c,
-    'Comment choisir un '+p, p+' depuis 20 ans '+c, p+' 24h/24 '+c, p+' semaine '+c
+
+  // Résolution géo (matching souple insensible à la casse)
+  const geoKey = Object.keys(GEO_DATA).find(k =>
+    c.toLowerCase().includes(k.toLowerCase()) ||
+    k.toLowerCase().includes(c.toLowerCase())
+  );
+  const geo = geoKey ? GEO_DATA[geoKey] : { quartiers: [], proches: [] };
+
+  // ── Mots-clés core ────────────────────────────────────────────────────────
+  const core = [
+    p, `${p} ${c}`, z ? `${p} ${z}` : null,
+    `${p} pas cher`, `${p} devis gratuit`, `${p} tarifs 2024`,
+    `Meilleur ${p} ${c}`, `${p} professionnel ${c}`,
+    `${p} urgent ${c}`, `${p} proche de chez moi`,
+    `${p} agréé`, `${p} certifié`, `${p} qualifié`,
+    `Devis ${p} ${c}`, `Urgence ${p} ${c}`,
+    `Avis ${p} ${c}`, `${p} recommandé ${c}`,
+    `${p} à domicile ${c}`, `${p} 24h/24 ${c}`,
+    `Comment choisir un ${p}`, `${p} centre-ville ${c}`,
+    `Prix ${p} ${c}`, `Tarif ${p} ${c}`
+  ].filter(Boolean);
+
+  // ── Mots-clés quartiers ────────────────────────────────────────────────────
+  const kwQuartiers = geo.quartiers.flatMap(q => [
+    `${p} ${q}`, `${p} ${q} ${c}`
+  ]);
+
+  // ── Mots-clés communes proches ────────────────────────────────────────────
+  const kwProches = geo.proches.flatMap(v => [
+    `${p} ${v}`, `${p} ${v} pas cher`
+  ]);
+
+  // ── Mots-clés custom ──────────────────────────────────────────────────────
+  const kwCustom = ek
+    ? ek.split(',').map(s => s.trim()).filter(Boolean).map(k =>
+        (k.includes(p) || p.includes(k)) ? k : `${k} ${p} ${c}`
+      )
+    : [];
+
+  // ── Rendu avec séparateurs visuels ───────────────────────────────────────
+  const fmt = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const sections = [
+    { label: '🎯 Mots-clés principaux', items: [...new Set(core)] },
+    { label: `📍 Quartiers de ${c} (${geo.quartiers.length})`, items: [...new Set(kwQuartiers)] },
+    { label: `🗺️ Communes à 30 km (${geo.proches.length})`, items: [...new Set(kwProches)] },
+    ...(kwCustom.length ? [{ label: '✏️ Mots-clés personnalisés', items: [...new Set(kwCustom)] }] : [])
   ];
-  if (c) kw.push(p+' centre-ville '+c, p+' '+c+' et périphérie');
-  if (z) kw.push(p+' '+z);
-  if (ek) ek.split(',').map(s=>s.trim()).filter(Boolean).forEach(k => {
-    kw.push(k.includes(p)||p.includes(k) ? k : k+' '+p+' '+c);
-  });
-  [...new Set(kw)].forEach(k => {
-    const t = document.createElement('span');
-    t.className = 'tag sel';
-    t.textContent = k.charAt(0).toUpperCase()+k.slice(1);
-    t.addEventListener('click',()=>{ t.classList.toggle('sel'); });
-    o.appendChild(t);
+
+  sections.forEach(sec => {
+    if (!sec.items.length) return;
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'width:100%;font-size:.72rem;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 5px;padding:4px 8px;background:var(--g50);border-radius:4px;border-left:3px solid var(--po)';
+    lbl.textContent = sec.label;
+    o.appendChild(lbl);
+    sec.items.forEach(k => {
+      const t = document.createElement('span');
+      t.className = 'tag sel';
+      t.textContent = fmt(k);
+      t.addEventListener('click', () => t.classList.toggle('sel'));
+      o.appendChild(t);
+    });
   });
 }
 
@@ -475,17 +731,23 @@ function build() {
   let ch = selChart>=0 && selChart<CHARTS.length ? CHARTS[selChart] : {n:'Personnalisé',m:$('#cM').value,s:$('#cS').value,a:$('#cA').value};
   const kw = []; $$('#kwo .tag.sel').forEach(tg=>kw.push(tg.textContent.trim()));
   const gmb = $('#gmb').value.trim(), mq = encodeURIComponent(n+' '+a);
-  return {p,c,z,n,t,a,e,d,ch,kw,gmb,mq,st:$('#sty').value};
+  const siret = $('#bSiret').value.trim();
+  const statut = $('#bStatut').value;
+  // Résoudre le geo depuis GEO_DATA
+  const geoKey = Object.keys(GEO_DATA).find(k => c.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(c.toLowerCase()));
+  const geo = geoKey ? GEO_DATA[geoKey] : { quartiers: [], proches: [] };
+  return {p,c,z,n,t,a,e,d,ch,kw,gmb,mq,st:$('#sty').value,geo,siret,statut};
 }
 
 function slug(s){return s.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,25)}
 
 // Generate text
 function genTxt(d) {
-  const kw = d.kw.slice(0,14).join(', ');
+  const kw = d.kw.slice(0,22).join(', ');
   const imgs = buildImages(d);
   const articles = buildArticles(d);
   const imgPrompts = buildImagePrompts(imgs, d);
+  const year = new Date().getFullYear();
   return `Crée un site vitrine complet pour ${d.n}, ${d.p} situé à ${d.c}${d.z?' ('+d.z+')':''}.
 
 ━━━ INFORMATIONS CLIENT ━━━
@@ -494,6 +756,8 @@ Métier : ${d.p}
 Adresse : ${d.a}${d.z?' '+d.z:''}
 Téléphone : ${d.t}
 Email : ${d.e}
+Statut juridique : ${d.statut || 'non précisé'}
+${d.siret ? 'SIRET : ' + d.siret : 'SIRET : [à compléter si applicable]'}
 Description : ${d.d}
 
 ━━━ CONTRAINTES TECHNIQUES ━━━
@@ -504,13 +768,58 @@ Description : ${d.d}
 - Responsive mobile-first, breakpoint 768px
 - Accessible : aria, role, skip link
 
+━━━ PERFORMANCE & CORE WEB VITALS (cible 90+ mobile) ━━━
+CSS :
+→ Tout le CSS above-the-fold en <style> inline dans <head> (max 14kb)
+→ Le reste via <link rel="stylesheet" media="print" onload="this.media='all'">
+→ Zéro CSS inutile : custom uniquement, pas de Bootstrap/Tailwind
+→ Animations : uniquement transform et opacity (jamais width/height/margin)
+→ Propriété will-change : uniquement sur les éléments animés en permanence
+
+IMAGES :
+→ Toujours fournir width et height sur chaque <img> (évite le CLS)
+→ Hero image : loading="eager" fetchpriority="high" — toutes les autres : loading="lazy"
+→ Utiliser <picture> avec <source type="image/webp"> + fallback <img> JPG
+→ Ajouter srcset avec 2 tailles minimum : 480w et 960w
+→ Hero : width="1200" height="630" explicite
+→ Viser < 200ko par image (mentionner squoosh.app pour compression)
+→ Icônes SVG : toujours inline dans le HTML, jamais via <img src="icon.svg">
+
+FONTS :
+→ Pattern exact :
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link rel="preload" href="[URL_FONT]" as="style" onload="this.onload=null;this.rel='stylesheet'">
+   <noscript><link rel="stylesheet" href="[URL_FONT]"></noscript>
+→ font-display: swap obligatoire
+→ Fallback système : Inter → system-ui, -apple-system, sans-serif
+
+JAVASCRIPT :
+→ Zéro JS dans <head>
+→ Tout JS en <script defer> ou en bas de <body>
+→ Vanilla JS uniquement — pas de jQuery, pas de librairie
+→ Accordéon FAQ : max 15 lignes JS
+→ Sticky CTA mobile : CSS position:fixed, pas de JS
+
+HTML :
+→ <meta name="theme-color" content="${d.ch.m}">
+→ <meta name="robots" content="index, follow">
+→ Attribut autocomplete sur chaque champ de formulaire
+→ Attribut decoding="async" sur les images hors-écran
+→ rel="noopener noreferrer" sur tous les liens target="_blank"
+
+COMMENTAIRES DE PERF :
+→ Chaque image : <!-- PERF: lazy, WebP, 180ko estimé -->
+→ CSS critiques : <!-- PERF: above-the-fold inlined -->
+
 ━━━ IMAGES LIBRES DE DROITS ━━━
 Recherche et intègre UNIQUEMENT des images libres de droits (Unsplash, Pexels, Pixabay, licence CC0 / domaine public) cohérentes avec le métier "${d.p}" et la localisation "${d.c}".
-- Minimum 10 images pour le site vitrine + 1 image par article de blog.
+- Minimum 10 images pour le site vitrine + 1 image par article de blog (12 articles = 12 images supplémentaires).
 - Formats : JPG/PNG pour photos, SVG pour icônes et illustrations simples.
 - Toutes les images doivent être enregistrées dans le dossier "images/".
-- Nommer les fichiers de façon descriptive et cohérente (ex: hero-plombier-paris.jpg, service-1.jpg...).
+- Nommer les fichiers de façon descriptive et cohérente.
 - Si une image n'est pas remplacée par l'utilisateur, garder l'image libre de droits trouvée par défaut.
+- Pour chaque image, préférer Heroicons (SVG inline) pour les icônes ; si non disponible, utiliser le prompt IA fourni.
 
 ━━━ CHARTE GRAPHIQUE ━━━
 Style : ${d.st}
@@ -531,14 +840,35 @@ Pages :
     Témoignages (3 avis)
     Footer + sticky CTA mobile
 
-  blog/index.html — Blog avec minimum 10 articles SEO listés
-  blog/*/index.html — Articles (10 articles minimum) :
+  blog/index.html — Blog avec 12 articles SEO
+  blog/*/index.html — Articles (12 articles) :
 ${articles.map((a,i)=>`    ${(i+1).toString().padStart(2,'0')}. "${a}"`).join('\n')}
 
+  mentions-legales/index.html — Mentions légales LCEN
+  politique-confidentialite/index.html — Politique de confidentialité RGPD
+  cgv/index.html — Conditions Générales de Vente
+
 ━━━ SEO ━━━
-Mots-clés : ${kw}
-Chaque page : title unique + meta desc (150-160) + OG + Twitter + canonical + JSON-LD breadcrumbs
-Les 10+ articles de blog doivent cibler chacun au moins 2-3 mots-clés du champ lexical "${d.p}" + "${d.c}".
+Mots-clés principaux (cœur de cible) :
+${kw}
+
+━━━ SEO GÉO-LOCAL — ZONE D'INTERVENTION COMPLÈTE ━━━
+Ville principale : ${d.c}${d.z ? ' (' + d.z + ')' : ''}
+
+QUARTIERS À CIBLER (${d.geo.quartiers.length}) — intégrer naturellement dans le contenu :
+${d.geo.quartiers.join(', ')}
+
+COMMUNES À 30 KM (${d.geo.proches.length}) — créer une section dédiée sur la page :
+${d.geo.proches.join(', ')}
+
+INSTRUCTIONS SEO GÉOGRAPHIQUES (obligatoires) :
+→ Section "Zone d'intervention" sur index.html : liste visuelle de TOUTES ces communes avec un lien anchor #contact
+→ JSON-LD LocalBusiness : "areaServed" doit contenir TOUTES les communes proches + ville principale
+→ Meta description de index.html : mentionner la ville ET 2-3 communes proches
+→ Chaque article de blog : citer naturellement 3-5 quartiers ou communes selon le sujet
+→ H1 et titres : varier en incluant des noms de quartiers ou communes (ex: "${d.p} ${d.geo.quartiers[0] || 'centre'}", "${d.p} ${d.geo.proches[0] || 'périphérie'}")
+→ Balises alt des images : inclure le nom de la ville et parfois un quartier
+→ Ne pas surcharger : max 1 mention géographique tous les 100 mots dans le corps de texte
 
 ━━━ GOOGLE MAPS ━━━
 ${d.gmb?'- Fiche GMB : '+d.gmb:''}
@@ -548,6 +878,58 @@ ${d.gmb?'- Fiche GMB : '+d.gmb:''}
 ━━━ TON ━━━
 Professionnel, rassurant, expertise locale. Vouvoiement. Mettre en avant réactivité, garanties, avis clients.
 Formulaire devis : nom, email, téléphone, description, code postal.
+
+━━━ PAGES LÉGALES À GÉNÉRER ━━━
+Créer les 3 fichiers suivants avec le même header/footer que index.html :
+
+📄 mentions-legales/index.html
+Contenu obligatoire (loi LCEN art. 6) :
+- Éditeur : ${d.n}, ${d.statut || 'Entreprise individuelle'}
+- Adresse siège : ${d.a}, ${d.z} ${d.c}
+- Téléphone : ${d.t}
+- Email : ${d.e}
+${d.siret ? '- SIRET : ' + d.siret : '- SIRET : [À compléter]'}
+- Hébergeur : [Nom hébergeur], [Adresse hébergeur] (laisser placeholder)
+- Directeur de publication : [Nom du responsable]
+- Propriété intellectuelle : contenu © ${year} ${d.n}
+- Responsabilité : clause standard de limitation
+- Liens hypertextes : clause standard
+- Cookies : lister les types utilisés (analytique, technique)
+
+📄 politique-confidentialite/index.html
+Contenu RGPD obligatoire (Règlement UE 2016/679) :
+- Responsable de traitement : ${d.n}, ${d.a}, ${d.z} ${d.c}
+- DPO / contact RGPD : ${d.e}
+- Données collectées : formulaire de contact (nom, email, téléphone, description, CP)
+- Finalité : réponse aux demandes de devis uniquement
+- Base légale : consentement de l'utilisateur (art. 6.1.a RGPD)
+- Durée de conservation : 3 ans à compter du dernier contact
+- Destinataires : ${d.n} uniquement, pas de partage avec des tiers
+- Droits : accès, rectification, suppression, portabilité, opposition → ${d.e}
+- Droit de réclamation : CNIL, 3 place de Fontenoy, 75007 Paris
+- Cookies : aucun cookie de traçage, uniquement cookies techniques
+- Formulaire de contact : les données ne sont pas stockées automatiquement
+
+📄 cgv/index.html (Conditions Générales de Vente)
+Contenu recommandé pour artisan/prestataire :
+- Vendeur / Prestataire : ${d.n}, ${d.statut || 'EI'}, ${d.a}, ${d.z} ${d.c}, SIRET ${d.siret || '[À compléter]'}
+- Champ d'application : devis, prestations de ${d.p} à ${d.c} et communes voisines
+- Devis : gratuit, valable 30 jours, engagement à la signature
+- Prix : HT/TTC selon statut (préciser si TVA applicable)
+- Paiement : modalités (acompte, solde à réception)
+- Délai d'intervention : sous réserve des disponibilités
+- Garanties légales : garantie décennale si applicable, garantie de parfait achèvement
+- Responsabilité : plafond à la valeur du devis signé
+- Litiges : médiation CNPM-MEDIATION-CONSOMMATION avant recours judiciaire
+- Droit applicable : droit français, tribunaux compétents : ${d.c}
+
+RÈGLES COMMUNES AUX 3 PAGES LÉGALES :
+→ Liens vers ces pages dans le footer de TOUTES les pages (index.html, blog, articles)
+→ <link rel="canonical"> + meta noindex si souhaité (laisser index pour l'instant)
+→ Texte en français clair, sans jargon inutile
+→ Rédiger un contenu complet et professionnel (pas de placeholder "[À compléter]" sauf SIRET si non fourni)
+→ Date de dernière mise à jour en haut de chaque page légale
+→ Bannière cookie simple en JS (pas de librairie) : une ligne en bas de page avec bouton "Accepter" stockant le consentement en localStorage
 
 Génère TOUS les fichiers HTML/CSS/JS maintenant.
 
@@ -559,22 +941,127 @@ Pour chaque image ci-dessous, copie le prompt dans ChatGPT Image et sauvegarde l
 ${imgPrompts.map(p => `\n[${p.file}]\n${p.prompt}`).join('\n')}`;
 }
 
-function buildImages(d){
+function buildImages(d) {
+  const p = d.p, c = d.c, st = d.st, cm = d.ch.m, ca = d.ch.a;
+  const ps = slug(p), cs = slug(c);
   return [
-    {file:`logo.${d.p.toLowerCase().replace(/[^a-z]/g,'')}.svg`,description:`Icône/logo stylisé du métier de ${d.p}`,format:'SVG',kind:'logo'},
-    {file:`hero-${slug(d.p)}-${slug(d.c)}.jpg`,description:`Photo professionnelle d'un ${d.p} en action à ${d.c}`,format:'JPG',kind:'hero'},
-    {file:`about-${slug(d.p)}.jpg`,description:`Image illustrative de l'entreprise / équipe / atelier / local ${d.p} à ${d.c}`,format:'JPG',kind:'about'},
-    {file:`service-1.jpg`,description:`Photo cohérente illustrant la prestation principale de ${d.p}`,format:'JPG',kind:'service'},
-    {file:`service-2.jpg`,description:`Photo cohérente illustrant une deuxième prestation de ${d.p}`,format:'JPG',kind:'service'},
-    {file:`service-3.jpg`,description:`Photo cohérente illustrant une troisième prestation de ${d.p}`,format:'JPG',kind:'service'},
-    {file:`step-1.svg`,description:`Icône simple étape 1 : prise de contact / diagnostic`,format:'SVG',kind:'icon'},
-    {file:`step-2.svg`,description:`Icône simple étape 2 : intervention / réalisation`,format:'SVG',kind:'icon'},
-    {file:`step-3.svg`,description:`Icône simple étape 3 : livraison / satisfaction`,format:'SVG',kind:'icon'},
-    {file:`testimonial-1.jpg`,description:`Portrait de client satisfait (ambiance professionnelle)`,format:'JPG',kind:'testimonial'},
-    {file:`testimonial-2.jpg`,description:`Portrait de client satisfait (ambiance professionnelle)`,format:'JPG',kind:'testimonial'},
-    {file:`testimonial-3.jpg`,description:`Portrait de client satisfait (ambiance professionnelle)`,format:'JPG',kind:'testimonial'},
-    {file:`zone-intervention.svg`,description:`Icône carte / zone d'intervention autour de ${d.c}`,format:'SVG',kind:'icon'},
-    {file:`contact-bg.jpg`,description:`Photo d'ambiance professionnelle pour la section contact`,format:'JPG',kind:'contact'}
+    {
+      file: `logo.${ps}.svg`, format: 'SVG', kind: 'logo',
+      description: `Logo / icône stylisé pour ${p}`,
+      unsplashQuery: null, pexelsQuery: null,
+      heroicon: 'wrench-screwdriver',
+      heroiconUrl: 'https://heroicons.com (chercher "tool" ou le métier)',
+      svgSourceNote: "Télécharger le SVG path depuis heroicons.com et l'intégrer inline dans le HTML",
+      aiPrompt: `Flat vector icon logo for a "${p}" professional service business. Minimalist, single color white on transparent background. Clean geometric shapes, no text, no gradients. SVG format. Style: ${st}, modern, professional. The icon must immediately suggest the trade "${p}".`
+    },
+    {
+      file: `hero-${ps}-${cs}.jpg`, format: 'JPG', kind: 'hero',
+      description: `Photo hero : ${p} en action à ${c}`,
+      unsplashQuery: `${p} professional work site`,
+      pexelsQuery: `${p} professional at work`,
+      heroicon: null,
+      aiPrompt: `Cinematic professional photo of a ${p} actively working, natural daylight, sharp focus on hands and tools, blurred modern background. Colors matching ${cm} and ${ca}. 16:9 ratio, high resolution. No watermark, photorealistic. Location: ${c}, France.`
+    },
+    {
+      file: `about-${ps}.jpg`, format: 'JPG', kind: 'about',
+      description: `Photo équipe / atelier ${p} à ${c}`,
+      unsplashQuery: `${p} team workshop professionals`,
+      pexelsQuery: `professional team craftsman`,
+      heroicon: null,
+      aiPrompt: `Professional photo of a small ${p} business team or workshop in ${c}, France. Warm, trustworthy, welcoming atmosphere. ${st} style. Natural light. Multiple professionals visible. Photorealistic.`
+    },
+    {
+      file: 'service-1.jpg', format: 'JPG', kind: 'service',
+      description: `Prestation principale de ${p}`,
+      unsplashQuery: `${p} main service work`,
+      pexelsQuery: `${p} professional service`,
+      heroicon: null,
+      aiPrompt: `Close-up professional photo of a ${p} performing their main service. Sharp detail, professional tools visible, clean environment. Modern lighting, ${st} aesthetic, accent color ${ca}. Photorealistic.`
+    },
+    {
+      file: 'service-2.jpg', format: 'JPG', kind: 'service',
+      description: `Deuxième prestation de ${p}`,
+      unsplashQuery: `${p} renovation work detail`,
+      pexelsQuery: `craftsmanship professional work`,
+      heroicon: null,
+      aiPrompt: `Professional photo showing a secondary service of a ${p}. Different angle and context from service-1.jpg. High quality, ${st} style, colors ${cm}. Photorealistic, no watermark.`
+    },
+    {
+      file: 'service-3.jpg', format: 'JPG', kind: 'service',
+      description: `Troisième prestation de ${p}`,
+      unsplashQuery: `professional finishing work quality`,
+      pexelsQuery: `professional artisan work`,
+      heroicon: null,
+      aiPrompt: `Professional photo of a third distinct service by a ${p}. Emphasize quality and finish. ${st} style, warm lighting, accent color ${ca}. Photorealistic.`
+    },
+    {
+      file: 'step-1.svg', format: 'SVG', kind: 'icon',
+      description: 'Étape 1 : Prise de contact / diagnostic',
+      unsplashQuery: null, pexelsQuery: null,
+      heroicon: 'phone',
+      heroiconUrl: 'https://heroicons.com — icône "phone"',
+      svgSourceNote: 'Chercher "phone" sur heroicons.com, copier le SVG path, intégrer inline',
+      aiPrompt: `Minimal flat icon representing a phone call or first contact. Single color white on transparent. 48x48px viewBox. Geometric, ultra-clean lines. No text. SVG-ready. Style: ${st}.`
+    },
+    {
+      file: 'step-2.svg', format: 'SVG', kind: 'icon',
+      description: 'Étape 2 : Intervention / réalisation',
+      unsplashQuery: null, pexelsQuery: null,
+      heroicon: 'wrench-screwdriver',
+      heroiconUrl: 'https://heroicons.com — icône "wrench-screwdriver"',
+      svgSourceNote: 'Chercher "wrench" sur heroicons.com, copier le SVG path, intégrer inline',
+      aiPrompt: `Minimal flat icon representing tools or work in progress. Single color white on transparent. 48x48px viewBox. Geometric, clean. No text. SVG-ready. Style: ${st}.`
+    },
+    {
+      file: 'step-3.svg', format: 'SVG', kind: 'icon',
+      description: 'Étape 3 : Livraison / satisfaction client',
+      unsplashQuery: null, pexelsQuery: null,
+      heroicon: 'check-badge',
+      heroiconUrl: 'https://heroicons.com — icône "check-badge"',
+      svgSourceNote: 'Chercher "check-badge" sur heroicons.com, copier le SVG path, intégrer inline',
+      aiPrompt: `Minimal flat icon representing satisfaction, completion or a checkmark badge. Single color white on transparent. 48x48px viewBox. Geometric, professional. No text. SVG-ready. Style: ${st}.`
+    },
+    {
+      file: 'testimonial-1.jpg', format: 'JPG', kind: 'testimonial',
+      description: 'Portrait client satisfait #1',
+      unsplashQuery: 'professional portrait smiling person indoor',
+      pexelsQuery: 'satisfied customer portrait professional',
+      heroicon: null,
+      aiPrompt: `Portrait photo of a happy satisfied customer (person 1 of 3), professional appearance, genuine warm smile, soft bokeh indoor background. Natural light. Photorealistic, trustworthy, diverse. No watermark.`
+    },
+    {
+      file: 'testimonial-2.jpg', format: 'JPG', kind: 'testimonial',
+      description: 'Portrait client satisfait #2',
+      unsplashQuery: 'happy customer portrait office',
+      pexelsQuery: 'smiling professional headshot',
+      heroicon: null,
+      aiPrompt: `Portrait photo of a different happy customer (person 2 of 3, different gender/age from person 1), friendly smile, soft indoor background. Photorealistic, professional. No watermark.`
+    },
+    {
+      file: 'testimonial-3.jpg', format: 'JPG', kind: 'testimonial',
+      description: 'Portrait client satisfait #3',
+      unsplashQuery: 'person smiling natural portrait',
+      pexelsQuery: 'customer happy portrait natural',
+      heroicon: null,
+      aiPrompt: `Portrait of a third satisfied customer (different profile from persons 1 and 2). Warm smile, professional setting, natural light. Photorealistic. No watermark.`
+    },
+    {
+      file: 'zone-intervention.svg', format: 'SVG', kind: 'icon',
+      description: `Icône carte zone d'intervention ${c}`,
+      unsplashQuery: null, pexelsQuery: null,
+      heroicon: 'map-pin',
+      heroiconUrl: 'https://heroicons.com — icône "map-pin"',
+      svgSourceNote: 'Chercher "map-pin" sur heroicons.com, copier le SVG path, intégrer inline',
+      aiPrompt: `Minimal flat icon of a map with a location pin or service area circles. Single color white on transparent. 48x48px viewBox. Clean geometric. No text. SVG-ready. Style: ${st}.`
+    },
+    {
+      file: 'contact-bg.jpg', format: 'JPG', kind: 'contact',
+      description: `Photo fond section contact ${p}`,
+      unsplashQuery: `${p} professional background workspace`,
+      pexelsQuery: `professional dark background workspace`,
+      heroicon: null,
+      aiPrompt: `Wide cinematic photo for a contact section background. Dark or semi-dark tone (white text must be readable on top). ${p} trade atmosphere, ${st} style, subtle use of ${cm} and ${ca}. 16:9 ratio. Slightly blurred background. Photorealistic.`
+    }
   ];
 }
 
@@ -621,8 +1108,11 @@ function renderImageReplacements(d){
   const list = $('#imgList');
   list.innerHTML = '';
   const imgs = buildImages(d);
-  const prompts = buildImagePrompts(imgs,d);
   imgs.forEach((img,i) => {
+    const isSvg = img.format === 'SVG';
+    const hasHero = !!img.heroicon;
+    const hasStock = !isSvg || (!img.unsplashQuery && !img.pexelsQuery);
+
     const row = document.createElement('div');
     row.className = 'img-row';
     row.dataset.file = img.file;
@@ -631,8 +1121,117 @@ function renderImageReplacements(d){
     info.className = 'img-info';
     info.innerHTML = `<div class="img-name">${img.file}</div>
       <div class="img-desc">${img.description}</div>
-      <span class="img-format">${img.format}</span>
-      <div class="img-desc" style="margin-top:8px;font-style:italic">Prompt ChatGPT Image : ${prompts[i].prompt}</div>`;
+      <span class="img-format">${img.format}</span>`;
+
+    // Source tabs
+    const sources = document.createElement('div');
+    sources.className = 'img-sources';
+    sources.style.marginTop = '12px';
+
+    const tabs = document.createElement('div');
+    tabs.className = 'img-src-tabs';
+    tabs.innerHTML = `
+      <button class="img-src-tab ${!hasHero?'active':''}" data-src="stock">${isSvg ? '🦸 Heroicon / IA' : '🔗 Unsplash · Pexels · Pixabay'}</button>
+      ${isSvg ? `<button class="img-src-tab active" data-src="heroicon">🦸 Heroicon SVG</button>` : ''}
+      <button class="img-src-tab ${hasHero?'':'active'}" data-src="ai" style="display:none" data-ai-tab>🤖 Prompt IA</button>
+    `;
+
+    // Helper pour switcher les onglets
+    const showPanel = name => {
+      row.querySelectorAll('.img-src-panel').forEach(p => p.style.display = 'none');
+      row.querySelectorAll('.img-src-tab').forEach(t => t.classList.remove('active'));
+      const p = row.querySelector(`.img-src-panel[data-panel="${name}"]`);
+      if(p) p.style.display = 'block';
+      const t = row.querySelector(`.img-src-tab[data-src="${name}"]`);
+      if(t) t.classList.add('active');
+    };
+
+    tabs.querySelectorAll('.img-src-tab').forEach(tab => {
+      tab.addEventListener('click', () => showPanel(tab.dataset.src));
+    });
+    sources.appendChild(tabs);
+
+    // Panel stock / Unsplash / Pexels / Pixabay
+    const panelStock = document.createElement('div');
+    panelStock.className = 'img-src-panel active';
+    panelStock.dataset.panel = 'stock';
+    if(isSvg){
+      panelStock.innerHTML = `
+        <div class="img-prompt-box" style="margin-top:8px">
+          <div class="img-prompt-label">Prompt ChatGPT Image / Midjourney :</div>
+          <div class="img-prompt-text">${escapeHtml(img.aiPrompt)}</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-o copy-prompt" data-prompt="${escapeHtml(img.aiPrompt)}">📋 Copier le prompt</button>
+          <button class="btn btn-sm btn-o open-heroicons">🔗 Ouvrir Heroicons</button>
+        </div>
+      `;
+    } else {
+      const uq = encodeURIComponent(img.unsplashQuery || img.description);
+      const pq = encodeURIComponent(img.pexelsQuery || img.description);
+      panelStock.innerHTML = `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <a href="https://unsplash.com/s/photos/${uq}" target="_blank" class="btn btn-o btn-sm">🔍 Unsplash</a>
+          <a href="https://www.pexels.com/search/${pq}" target="_blank" class="btn btn-o btn-sm">📷 Pexels</a>
+          <a href="https://pixabay.com/images/search/${uq}" target="_blank" class="btn btn-o btn-sm">🖼 Pixabay</a>
+        </div>
+        <p style="font-size:.75rem;color:var(--g400);margin-top:6px">Téléchargez une image libre de droits → renommez-la <code>${img.file}</code> → uploadez avec 📁 Remplacer</p>
+      `;
+    }
+    sources.appendChild(panelStock);
+
+    // Panel Heroicon (SVG)
+    if(isSvg){
+      const panelHero = document.createElement('div');
+      panelHero.className = 'img-src-panel';
+      panelHero.dataset.panel = 'heroicon';
+      panelHero.style.display = 'none';
+      panelHero.innerHTML = `
+        <p style="font-size:.8rem">Icône recommandée : <strong>${img.heroicon || '—'}</strong></p>
+        <p style="font-size:.75rem;color:var(--g500)">${img.svgSourceNote || 'Télécharger le SVG path depuis heroicons.com et l\'intégrer inline dans le HTML.'}</p>
+        <a href="https://heroicons.com" target="_blank" class="btn btn-o btn-sm" style="margin-top:6px">🔗 Ouvrir Heroicons</a>
+      `;
+      sources.appendChild(panelHero);
+    }
+
+    // Panel AI prompt (JPG) — hidden by default, accessible via button
+    if(!isSvg){
+      const panelAI = document.createElement('div');
+      panelAI.className = 'img-src-panel';
+      panelAI.dataset.panel = 'ai';
+      panelAI.style.display = 'none';
+      panelAI.innerHTML = `
+        <div class="img-prompt-box">
+          <div class="img-prompt-label">Prompt ChatGPT Image / Midjourney :</div>
+          <div class="img-prompt-text">${escapeHtml(img.aiPrompt)}</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-o copy-prompt" data-prompt="${escapeHtml(img.aiPrompt)}">📋 Copier le prompt</button>
+          <a href="https://chat.openai.com" target="_blank" class="btn btn-sm btn-o">🤖 Générer dans ChatGPT</a>
+        </div>
+      `;
+      sources.appendChild(panelAI);
+
+      // Add "Prompt IA" visible tab for JPGs
+      const aiTab = tabs.querySelector('[data-ai-tab]');
+      if(aiTab) aiTab.style.display = '';
+    }
+
+    info.appendChild(sources);
+
+    // Event delegation for copy/open heroicons inside this row
+    sources.addEventListener('click', ev => {
+      const btn = ev.target.closest('.copy-prompt');
+      if(btn){
+        const prompt = btn.dataset.prompt;
+        navigator.clipboard.writeText(prompt).then(()=>{
+          const m = $('#cmsg'); m.textContent = 'Prompt copié !'; m.classList.add('s'); setTimeout(()=>m.classList.remove('s'),2000);
+        });
+      }
+      if(ev.target.closest('.open-heroicons')){
+        window.open('https://heroicons.com','_blank');
+      }
+    });
 
     const actions = document.createElement('div');
     actions.className = 'img-actions';
@@ -645,7 +1244,7 @@ function renderImageReplacements(d){
 
     const addBtn = document.createElement('button');
     addBtn.className = 'btn btn-o btn-sm';
-    addBtn.innerHTML = '+ Remplacer';
+    addBtn.innerHTML = '📁 Remplacer';
     addBtn.addEventListener('click', () => fileInput.click());
 
     actions.appendChild(fileInput);
@@ -655,6 +1254,10 @@ function renderImageReplacements(d){
     list.appendChild(row);
   });
   $('#sImg').classList.remove('hidden');
+}
+
+function escapeHtml(str){
+  return str.replace(/&/g,'&amp;').replace(/\u003c/g,'&lt;').replace(/\u003e/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function handleFile(e, fileName, row, actions){
@@ -704,13 +1307,21 @@ $('#dlReplacements').addEventListener('click', downloadReplacements);
 
 // Generate JSON
 function genJSON(d) {
-  const kw = d.kw.slice(0,14);
+  const kw = d.kw.slice(0,22);
   const imgs = buildImages(d);
   const articles = buildArticles(d);
   const imgPrompts = buildImagePrompts(imgs,d);
   return JSON.stringify({
-    projet:{type:"site_vitrine",client:d.n,metier:d.p,ville:d.c,code_postal:d.z,telephone:d.t,email:d.e,description:d.d},
+    projet:{type:"site_vitrine",client:d.n,metier:d.p,ville:d.c,code_postal:d.z,telephone:d.t,email:d.e,description:d.d,statut_juridique:d.statut,siret:d.siret||null},
     contraintes:{local:true,accents_html:true,zero_deps:true,svg_inline:true,responsive:true,breakpoint:768,accessibilite:["aria","role","skip"],chemins_relatifs:true},
+    performance:{
+      cible:"PageSpeed 90+ mobile",
+      css:{above_the_fold_inline:true,max_size_kb:14,defer_rest:true,animations_only:["transform","opacity"]},
+      images:{width_height_required:true,hero:{loading:"eager",fetchpriority:"high"},others:{loading:"lazy"},webp_picture:true,srcset:true,hero_dims:{w:1200,h:630},max_ko:200,svg_inline:true},
+      fonts:{preconnect:true,preload_pattern:true,font_display:"swap",fallback:"system-ui, -apple-system, sans-serif"},
+      js:{zero_in_head:true,defer_or_bottom:true,vanilla_only:true,faq_js_max_lines:15,sticky_cta_css_only:true},
+      html:{theme_color:d.ch.m,robots:"index, follow",autocomplete:true,decoding_async:true,noopener_noreferrer:true}
+    },
     images:{
       source:"libres_de_droits",
       dossier:"images/",
@@ -724,12 +1335,35 @@ function genJSON(d) {
     structure:{
       pages:[
         {fichier:"index.html",sections:["header","hero","services","about","etapes","zone","formulaire","faq","temoignages","footer","sticky_cta"]},
-        {fichier:"blog/index.html",articles_count:10},
-        {dossier:"blog/*/",articles}
+        {fichier:"blog/index.html",articles_count:12},
+        {dossier:"blog/*/",articles},
+        {fichier:"mentions-legales/index.html",type:"legal",sujet:"mentions_legales_lcen"},
+        {fichier:"politique-confidentialite/index.html",type:"legal",sujet:"rgpd"},
+        {fichier:"cgv/index.html",type:"legal",sujet:"cgv_garantie_decennale"}
       ]
     },
-    seo:{mots_cles:kw,balises:{title:"unique+ville",meta_description:"150-160",opengraph:true,twitter:true,canonical:true,breadcrumbs:true}},
+    seo:{
+      mots_cles:kw,
+      geo_local:{ville:d.c,code_postal:d.z,quartiers:d.geo.quartiers,communes_30km:d.geo.proches},
+      instructions:[
+        "Section Zone d'intervention avec TOUTES les communes proches + anchor #contact",
+        "JSON-LD LocalBusiness areaServed = ville + communes proches",
+        "Meta description avec ville + 2-3 communes proches",
+        "Chaque article blog citer 3-5 quartiers/communes",
+        "H1/titres varier avec noms de quartiers ou communes",
+        "Balises alt inclure ville et parfois un quartier",
+        "Max 1 mention geographique / 100 mots"
+      ],
+      balises:{title:"unique+ville",meta_description:"150-160",opengraph:true,twitter:true,canonical:true,breadcrumbs:true}
+    },
     maps:{gmb:d.gmb||null,embed:"https://www.google.com/maps/embed/v1/place?key=API_KEY&q="+encodeURIComponent(d.n+" "+d.a),itineraire:"https://www.google.com/maps/dir//"+encodeURIComponent(d.n+" "+d.a)},
+    pages_legales:{
+      fichiers:["mentions-legales/index.html","politique-confidentialite/index.html","cgv/index.html"],
+      regles:["liens footer toutes pages","canonical","date derniere mise a jour","banniere cookie localStorage"],
+      mentions_legales:{loi:"LCEN art. 6",editeur:d.n,statut:d.statut,adresse:`${d.a}, ${d.z} ${d.c}`,telephone:d.t,email:d.e,siret:d.siret||"[À compléter]",copyright:`${new Date().getFullYear()} ${d.n}`},
+      rgpd:{base_legale:"art. 6.1.a consentement",conservation:"3 ans",dpo:d.e,destinataires:d.n,recours:"CNIL"},
+      cgv:{garantie_decennale:true,mediation:"CNPM-MEDIATION-CONSOMMATION",tva_applicable:"selon statut"}
+    },
     contenu:{ton:"professionnel,rassurant,expertise locale",vouvoiement:true,formulaire:["nom","email","telephone","description","code_postal"]}
   },null,2);
 }
@@ -758,7 +1392,8 @@ $('#cpB').addEventListener('click',async()=>{
 
 // Reset
 $('#rstB').addEventListener('click',()=>{
-  ['prof','city','gmb','bN','bT','bA','bZ','bE','bD','ekw'].forEach(id=>document.getElementById(id).value='');
+  ['prof','city','gmb','bN','bT','bA','bZ','bE','bD','bSiret','ekw'].forEach(id=>document.getElementById(id).value='');
+  $('#bStatut').value = 'Auto-entrepreneur';
   $('#oc').value='';$('#gi').classList.remove('s');$('#kwo').innerHTML='';
   ['s2','s3','s4','sImg'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   $$('.step-ind').forEach(s=>{s.classList.remove('done','active')});
