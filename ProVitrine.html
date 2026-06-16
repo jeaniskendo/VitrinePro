@@ -143,10 +143,12 @@ textarea{resize:vertical;min-height:80px}
     </div>
     <div style="margin-top:14px">
       <label for="gmb">Lien Google My Business (optionnel)</label>
-      <div class="i-h">
-        <input type="url" id="gmb" placeholder="https://maps.app.goo.gl/... ou business.google.com/...">
-        <button class="btn btn-o btn-sm" id="fGmb">Récupérer</button>
-      </div>
+      <input type="url" id="gmb" placeholder="https://maps.app.goo.gl/... ou business.google.com/...">
+    </div>
+    <div style="margin-top:14px">
+      <label for="gmbContent">Collez ici le contenu copié de votre fiche Google Business (texte à l'aveugle)</label>
+      <textarea id="gmbContent" rows="4" placeholder="Ex :\nEntreprise Dupont\n12 Rue de la Paix, 25000 Besançon\n06 12 34 56 78\ndupont.fr\nPlombier · Ouvert 24h/24"></textarea>
+      <button class="btn btn-o btn-sm" id="fGmb" style="margin-top:10px">🔍 Extraire les infos</button>
     </div>
     <div class="gi" id="gi">
       <div class="g2">
@@ -424,19 +426,89 @@ $('#aC').addEventListener('click',() => {
   customUsed = true;
 });
 
+// GMB extraction from pasted content
+function parseGmbContent(text, p, c){
+  if(!text) return null;
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.match(/^http|^www|^\+|^\d{1,2}:\d{2}/));
+  const oneLine = text.replace(/\r?\n/g,' ').replace(/\s+/g,' ').trim();
+
+  // Phone
+  const phoneMatch = oneLine.match(/(?:\+33\s?\(?0?\)?\s?[1-9](?:[\s.]?\d{2}){4}|0[1-9](?:[\s.]?\d{2}){4})/);
+  const phone = phoneMatch ? phoneMatch[0].replace(/\s+/g,' ').trim() : '';
+
+  // Postal code + city
+  const cpCityMatch = oneLine.match(/(\d{5})\s+([A-Za-zÀ-ÖØ-öø-ÿ\-\s]+?)(?=\s*(?:France|$|\.|,|;))/i);
+  let cp = '', city = '';
+  if(cpCityMatch){ cp = cpCityMatch[1]; city = cpCityMatch[2].trim(); }
+  else { cp = c.match(/\((\d{5})\)/)?.[1] || ''; city = c.replace(/\(.*\)/,'').trim(); }
+
+  // Address line: look for line containing a number and a street type, or postal code
+  const streetTypes = 'rue|avenue|boulevard|place|impasse|allée|chemin|route|passage|quai|faubourg|lotissement|zone industrielle|résidence|cours';
+  let address = '';
+  const addrLine = lines.find(l => /\d+/.test(l) && new RegExp(streetTypes,'i').test(l));
+  if(addrLine) address = addrLine.replace(/\s*\d{5}.*/,'').trim();
+  else {
+    const cpLine = lines.find(l => l.includes(cp));
+    if(cpLine && cpLine.length > 5) address = cpLine.replace(/\s*\d{5}.*/,'').trim();
+  }
+
+  // Website
+  const webMatch = oneLine.match(/(?:https?:\/\/)?(?:www\.)?([a-z0-9\-]+\.[a-z]{2,})(?:\/[^\s]*)?/i);
+  let website = webMatch ? webMatch[0] : '';
+  if(website && !website.startsWith('http')) website = 'https://' + website;
+
+  // Business name: prefer first short line that is not address/phone/web/city/profession
+  let name = '';
+  const exclude = new RegExp(`^(${streetTypes.split('|').join('|')})|${p ? escapeRegex(p) : ''}|${escapeRegex(city)}|${cp}|\d{2}[\s.]\d{2}|^http|^www`,'i');
+  for(const l of lines){
+    if(l.length > 3 && l.length < 60 && !l.match(/\d{5}/) && !l.match(/^0\d/) && !l.includes('http') && !l.match(/^www/) && !exclude.test(l)){
+      name = l; break;
+    }
+  }
+  if(!name) name = p ? p+' '+city : 'Professionnel '+city;
+
+  // Description / slogan: a sentence not matching other patterns
+  let description = '';
+  const descLine = lines.find(l => l.length > 20 && l.length < 140 && !l.match(/\d{5}|^0\d|http|www|@/) && l !== name);
+  if(descLine) description = descLine;
+
+  return {name,address,cp,city,phone,website,description};
+}
+
+function escapeRegex(str){ return str.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+
 // GMB fetch
-$('#fGmb').addEventListener('click',async()=>{
+$('#fGmb').addEventListener('click',()=>{
   const url = $('#gmb').value.trim();
-  if (!url) return;
+  const content = $('#gmbContent').value.trim();
   const c = $('#city').value, p = $('#prof').value;
   $('#gi').classList.add('s');
-  $('#gN').textContent = p ? p+' '+c : 'Professionnel '+c;
-  $('#gA').textContent = c ? 'Centre-ville, '+c : '—';
-  $('#gZ').textContent = c.match(/\((\d{5})\)/)?.[1] || '25000';
-  $('#gP').textContent = 'Voir Google Maps';
-  $('#bN').value = $('#gN').textContent;
-  $('#bA').value = c || '';
-  $('#bZ').value = $('#gZ').textContent;
+
+  let extracted;
+  if(content){
+    extracted = parseGmbContent(content, p, c);
+  } else {
+    // fallback simple
+    extracted = {
+      name: p ? p+' '+c.replace(/\(.*\)/,'').trim() : 'Professionnel '+c,
+      address: c ? 'Centre-ville, '+c.replace(/\(.*\)/,'').trim() : '',
+      cp: c.match(/\((\d{5})\)/)?.[1] || '25000',
+      city: c.replace(/\(.*\)/,'').trim(),
+      phone: '', website: '', description: ''
+    };
+  }
+
+  $('#gN').textContent = extracted.name || '—';
+  $('#gA').textContent = extracted.address || '—';
+  $('#gZ').textContent = extracted.cp || '—';
+  $('#gP').textContent = extracted.phone || (url ? 'Voir Google Maps' : '—');
+
+  if(extracted.name) $('#bN').value = extracted.name;
+  if(extracted.address) $('#bA').value = extracted.address;
+  if(extracted.cp) $('#bZ').value = extracted.cp;
+  if(extracted.phone) $('#bT').value = extracted.phone;
+  if(extracted.website) $('#bE').value = extracted.website;
+  if(extracted.description) $('#bD').value = extracted.description;
 });
 
 const GEO_DATA = {
